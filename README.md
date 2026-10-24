@@ -34,7 +34,7 @@ See [`examples/`](examples/) for sample conversations.
 
 ### Claude.ai / Claude desktop & mobile apps
 
-1. Download **[`study-mode.zip`](dist/study-mode.zip)** from this repo (or the latest [release](../../releases)).
+1. Download **[`study-mode.zip`](https://github.com/Filhao2019/Study-Mode-for-Claude/raw/main/dist/study-mode.zip)** from this repo.
 2. In Claude, open **Settings → Capabilities → Skills** and upload the zip.
 3. Start a chat and say **"turn on study mode"** or type `/study-mode`.
 
