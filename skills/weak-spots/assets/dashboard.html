@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weak Spots</title>
+<!--
+  Studying with Claude: weak-spots dashboard template.
+  To use: replace the JSON in the application/json script block whose id is "progress-data" (near the end of the file) with the course's data
+  (topics, exams, quiz history lines, open error-log entries). The page computes everything else.
+  Inside the JSON, write "<\/" instead of "</".
+-->
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface-1: #fcfcfb; --surface-2: #f0efec;
+    --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #6e6c66;
+    --grid: #e1e0d9; --baseline: #c3c2b7; --ring: rgba(11,11,11,0.10);
+    --series-1: #2a78d6; --series-1-hover: #1c5cab; --track: #e7f0fc;
+    --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+    --accent: #2a78d6; --accent-text: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface-1: #1a1a19; --surface-2: #262624;
+      --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #9a988f;
+      --grid: #2c2c2a; --baseline: #383835; --ring: rgba(255,255,255,0.10);
+      --series-1: #3987e5; --series-1-hover: #6da7ec; --track: #17283d;
+      --accent: #6da7ec; --accent-text: #0b0b0b;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19; --surface-2: #262624;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #9a988f;
+    --grid: #2c2c2a; --baseline: #383835; --ring: rgba(255,255,255,0.10);
+    --series-1: #3987e5; --series-1-hover: #6da7ec; --track: #17283d;
+    --accent: #6da7ec; --accent-text: #0b0b0b;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--page); color: var(--text-primary); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--surface-1); box-shadow: 0 1px 0 var(--ring); }
+  .brand { display: flex; gap: 10px; align-items: center; min-width: 0; }
+  .brand .logo { font-size: 22px; }
+  .title { font-weight: 650; }
+  .subtitle { color: var(--text-secondary); font-size: 13px; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px 16px 40px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .filters .label { color: var(--text-secondary); font-size: 13px; margin-right: 2px; }
+  .seg { display: inline-flex; background: var(--surface-1); border-radius: 10px; box-shadow: 0 0 0 1px var(--ring); padding: 3px; }
+  .seg button { border: 0; background: transparent; color: var(--text-secondary); font: inherit; font-size: 13.5px; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--text-primary); font-weight: 650; }
+  .ghost { border: 0; box-shadow: 0 0 0 1px var(--ring); background: var(--surface-1); color: var(--text-primary); border-radius: 10px; padding: 7px 11px; cursor: pointer; font: inherit; }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(12, 1fr); }
+  .card { background: var(--surface-1); border-radius: 14px; box-shadow: 0 0 0 1px var(--ring); padding: 18px; min-width: 0; }
+  .span-12 { grid-column: span 12; } .span-7 { grid-column: span 7; } .span-5 { grid-column: span 5; } .span-3 { grid-column: span 3; }
+  @media (max-width: 860px) { .span-7, .span-5 { grid-column: span 12; } .span-3 { grid-column: span 6; } }
+  h2 { font-size: 15px; margin: 0 0 4px; }
+  .card .sub { color: var(--text-secondary); font-size: 13px; margin: 0 0 14px; }
+  .hero { font-size: 52px; font-weight: 650; line-height: 1; margin: 6px 0 6px; }
+  .tile-label { color: var(--text-secondary); font-size: 13px; }
+  .tile-value { font-size: 28px; font-weight: 650; line-height: 1.15; margin-top: 4px; }
+  .tile-note { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+  /* bar chart */
+  .chart { position: relative; }
+  .axis { position: relative; height: 18px; margin-left: var(--label-w); margin-right: 44px; color: var(--text-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .axis span { position: absolute; transform: translateX(-50%); }
+  .rows { position: relative; }
+  .gridlines { position: absolute; top: 0; bottom: 0; left: var(--label-w); right: 44px; pointer-events: none; }
+  .gridlines i { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
+  .gridlines i.base { background: var(--baseline); }
+  .gridlines i.target { background: var(--text-muted); opacity: .55; }
+  .target-label { position: absolute; top: -18px; transform: translateX(-50%); font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; }
+  .row { --label-w: 0px; display: grid; grid-template-columns: var(--label-w-col) 1fr 44px; align-items: center; min-height: 36px; padding: 4px 0; cursor: default; border-radius: 8px; position: relative; }
+  .row .name { color: var(--text-primary); font-size: 13.5px; padding-right: 12px; overflow-wrap: anywhere; line-height: 1.25; }
+  .row .name small { display: block; color: var(--text-muted); font-size: 11.5px; }
+  .row .track { position: relative; height: 22px; }
+  .row .fill { position: absolute; left: 0; top: 0; height: 22px; background: var(--series-1); border-radius: 0 4px 4px 0; min-width: 2px; transition: background .12s; }
+  .row .fill.none { background: transparent; }
+  .row .value { font-size: 13px; color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; padding-left: 8px; }
+  .row:hover .fill, .row:focus-visible .fill { background: var(--series-1-hover); }
+  .row:hover, .row:focus-visible { background: var(--surface-2); }
+  .tooltip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface-1); color: var(--text-primary); border-radius: 10px; box-shadow: 0 0 0 1px var(--ring), 0 8px 24px rgba(0,0,0,.18);
+             padding: 10px 12px; font-size: 13px; min-width: 180px; max-width: 280px; opacity: 0; transition: opacity .1s; }
+  .tooltip.show { opacity: 1; }
+  .tooltip .tv { font-size: 18px; font-weight: 700; }
+  .tooltip .tn { color: var(--text-secondary); margin-bottom: 4px; }
+  .tooltip .tl { color: var(--text-secondary); }
+  /* recommendations */
+  ol.recs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: rec; }
+  ol.recs li { counter-increment: rec; display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 12px; border-radius: 12px; background: var(--surface-2); }
+  ol.recs li::before { content: counter(rec); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--surface-1); box-shadow: 0 0 0 1px var(--ring); }
+  .rec-topic { font-weight: 650; }
+  .rec-why { color: var(--text-secondary); font-size: 13px; margin: 2px 0 6px; }
+  code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12.5px; background: var(--surface-1); padding: 2px 6px; border-radius: 6px; box-shadow: 0 0 0 1px var(--ring); }
+  .copy { border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 12.5px; cursor: pointer; padding: 2px 4px; margin-left: 4px; }
+  /* status */
+  .status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--text-primary); font-size: 13px; }
+  .status .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .status .icon { font-size: 11px; color: var(--text-secondary); }
+  /* table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th { color: var(--text-secondary); font-weight: 600; font-size: 12.5px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.topic { white-space: normal; min-width: 160px; }
+  .mistake { padding: 10px 0; border-bottom: 1px solid var(--grid); }
+  .mistake:last-child { border-bottom: 0; }
+  .mistake .q { font-weight: 600; }
+  .mistake .w { color: var(--text-secondary); font-size: 13px; }
+  .empty { color: var(--text-secondary); padding: 6px 0; }
+  .foot { text-align: center; color: var(--text-muted); font-size: 12.5px; padding: 0 16px 24px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (max-width: 560px) {
+    .hero { font-size: 46px; }
+    .row { grid-template-columns: 1fr 44px; grid-template-areas: "name name" "track value"; }
+    .row .name { grid-area: name; padding: 0 0 4px; }
+    .row .track { grid-area: track; }
+    .row .value { grid-area: value; }
+    .axis, .gridlines { margin-left: 0; left: 0; }
+  }
+  @media (forced-colors: active) { .row .fill { background: CanvasText; } .status .dot { border: 1px solid CanvasText; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand"><span class="logo" aria-hidden="true">🎯</span>
+    <div><div class="title" id="title">Weak spots</div><div class="subtitle" id="subtitle"></div></div></div>
+  <button id="theme" class="ghost" type="button" aria-label="Switch between light and dark mode">◐</button>
+</header>
+<main>
+  <div class="filters" role="group" aria-label="Time range">
+    <span class="label">Quiz answers from</span>
+    <div class="seg" id="range">
+      <button type="button" data-days="0" aria-pressed="true">All time</button>
+      <button type="button" data-days="30" aria-pressed="false">Last 30 days</button>
+      <button type="button" data-days="7" aria-pressed="false">Last 7 days</button>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+<p class="foot">Studying with Claude · Accuracy is from your logged quiz, mock exam and review answers. Open mistakes always show current state.</p>
+<div class="tooltip" id="tooltip" role="presentation"></div>
+
+<script type="application/json" id="progress-data">
+{
+  "course": "Demo course",
+  "generated": "2026-10-23",
+  "exams": [ { "name": "Midterm", "date": "2026-11-14" } ],
+  "topics": [
+    { "id": "overview", "name": "Photosynthesis overview", "weight": 0.2 },
+    { "id": "light-reactions", "name": "Light-dependent reactions", "weight": 0.35 },
+    { "id": "calvin-cycle", "name": "Calvin cycle", "weight": 0.35 },
+    { "id": "limiting-factors", "name": "Limiting factors", "weight": 0.1 }
+  ],
+  "history": [
+    { "ts": "2026-10-12T17:00:00", "topic": "overview", "correct": true },
+    { "ts": "2026-10-12T17:02:00", "topic": "overview", "correct": true },
+    { "ts": "2026-10-12T17:04:00", "topic": "light-reactions", "correct": false },
+    { "ts": "2026-10-12T17:06:00", "topic": "light-reactions", "correct": true },
+    { "ts": "2026-10-12T17:08:00", "topic": "calvin-cycle", "correct": false },
+    { "ts": "2026-10-18T18:00:00", "topic": "light-reactions", "correct": true },
+    { "ts": "2026-10-18T18:02:00", "topic": "light-reactions", "correct": true },
+    { "ts": "2026-10-18T18:04:00", "topic": "calvin-cycle", "correct": false },
+    { "ts": "2026-10-18T18:06:00", "topic": "calvin-cycle", "correct": "partial" },
+    { "ts": "2026-10-18T18:08:00", "topic": "overview", "correct": true },
+    { "ts": "2026-10-21T16:30:00", "topic": "calvin-cycle", "correct": true },
+    { "ts": "2026-10-21T16:32:00", "topic": "calvin-cycle", "correct": false },
+    { "ts": "2026-10-21T16:34:00", "topic": "light-reactions", "correct": true },
+    { "ts": "2026-10-21T16:36:00", "topic": "light-reactions", "correct": false },
+    { "ts": "2026-10-22T19:10:00", "topic": "overview", "correct": true },
+    { "ts": "2026-10-22T19:12:00", "topic": "calvin-cycle", "correct": true }
+  ],
+  "errors": [
+    { "topic": "calvin-cycle", "question": "Which molecule supplies the electrons that reduce 3-PGA?", "why_wrong": "Mixed up ATP (energy) and NADPH (electrons).", "times_missed": 2, "resolved": false },
+    { "topic": "calvin-cycle", "question": "What does Rubisco attach CO2 to?", "why_wrong": "Answered glucose instead of RuBP.", "times_missed": 1, "resolved": false },
+    { "topic": "light-reactions", "question": "Where does released oxygen come from?", "why_wrong": "Thought it came from CO2.", "times_missed": 1, "resolved": false }
+  ]
+}
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s, el) { return (el || document).querySelector(s); };
+  var DAY = 86400000, TARGET = 70;
+  var store = {
+    get: function (k, f) { try { var v = localStorage.getItem(k); return v === null ? f : JSON.parse(v); } catch (e) { return f; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* no storage: fine */ } }
+  };
+  var root = document.documentElement;
+  function applyTheme(t) { if (t === "light" || t === "dark") root.setAttribute("data-theme", t); else root.removeAttribute("data-theme"); }
+  applyTheme(store.get("swc-theme", null));
+  $("#theme").addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") ? root.getAttribute("data-theme") === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    applyTheme(dark ? "light" : "dark"); store.set("swc-theme", dark ? "light" : "dark");
+  });
+
+  var data;
+  try { data = JSON.parse($("#progress-data").textContent); } catch (e) {
+    $("#grid").innerHTML = '<div class="card span-12"><h2>This dashboard file is damaged</h2><p class="sub">Ask Claude to regenerate it.</p></div>'; return;
+  }
+  var NOW = data.generated ? new Date(data.generated + "T23:59:59").getTime() : Date.now();
+  if (Date.now() > NOW) NOW = Date.now();
+  $("#title").textContent = "Weak spots";
+  $("#subtitle").textContent = (data.course || "Your course") + (data.generated ? " · data from " + data.generated : "");
+  document.title = "Weak spots · " + (data.course || "course");
+
+  var topics = (data.topics || []).slice();
+  var known = {}; topics.forEach(function (t) { known[t.id] = t; });
+  (data.history || []).concat(data.errors || []).forEach(function (h) { if (h.topic && !known[h.topic]) { known[h.topic] = { id: h.topic, name: pretty(h.topic) }; topics.push(known[h.topic]); } });
+  function pretty(id) { return String(id).replace(/[-_]+/g, " ").replace(/^\w/, function (c) { return c.toUpperCase(); }); }
+  var weights = topics.map(function (t) { return t.weight; }).filter(function (w) { return typeof w === "number" && w > 0; });
+  var avgW = weights.length ? weights.reduce(function (a, b) { return a + b; }, 0) / weights.length : null;
+  function time(ts) { var t = new Date(ts).getTime(); return isNaN(t) ? null : t; }
+  function dayStart(t) { var d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function calendarDays(from, to) { return Math.round((dayStart(to) - dayStart(from)) / DAY); }
+  function score(c) { return c === true ? 1 : c === "partial" ? 0.5 : 0; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  function analyze(rangeDays) {
+    var from = rangeDays ? NOW - rangeDays * DAY : -Infinity;
+    var all = (data.history || []).filter(function (h) { var t = time(h.ts); return h.topic && t !== null && t >= from; })
+      .sort(function (a, b) { return time(a.ts) - time(b.ts); });
+    var open = (data.errors || []).filter(function (e) { return !e.resolved; });
+    var stats = topics.map(function (t) {
+      var hs = all.filter(function (h) { return h.topic === t.id; });
+      var lastAll = (data.history || []).filter(function (h) { return h.topic === t.id && time(h.ts) !== null; }).map(function (h) { return time(h.ts); });
+      var pts = hs.reduce(function (s, h) { return s + score(h.correct); }, 0);
+      var acc = hs.length ? Math.round(100 * pts / hs.length) : null;
+      var last = lastAll.length ? Math.max.apply(null, lastAll) : null;
+      var trend = null;
+      if (hs.length >= 6) {
+        var recent = hs.slice(-Math.ceil(hs.length / 2)), early = hs.slice(0, hs.length - recent.length);
+        var a1 = early.reduce(function (s, h) { return s + score(h.correct); }, 0) / early.length, a2 = recent.reduce(function (s, h) { return s + score(h.correct); }, 0) / recent.length;
+        trend = a2 - a1 >= 0.15 ? "up" : a1 - a2 >= 0.15 ? "down" : "flat";
+      }
+      var mistakes = open.filter(function (e) { return e.topic === t.id; });
+      // Priority: smoothed weakness, open mistakes, time since practice, exam weight.
+      var smoothed = (pts + 1) / (hs.length + 2);
+      var need = hs.length ? 1 - smoothed : 0.5;
+      var errF = Math.min(mistakes.length, 5) / 5;
+      var daysSince = last === null ? null : Math.max(0, calendarDays(last, NOW));
+      var stale = daysSince === null ? 1 : Math.min(daysSince / 14, 1);
+      var wF = avgW && typeof t.weight === "number" ? Math.max(0.5, Math.min(2, t.weight / avgW)) : 1;
+      var priority = (0.55 * need + 0.3 * errF + 0.15 * stale) * wF;
+      // Fewer than 3 answers can show a weakness but can't prove mastery.
+      var status = acc === null ? "none" : acc < TARGET ? "weak" : hs.length < 3 ? "few" : acc >= 85 ? "strong" : "ok";
+      return { t: t, n: hs.length, pts: pts, acc: acc, last: last, daysSince: daysSince, trend: trend, mistakes: mistakes, priority: priority, status: status, wF: wF };
+    });
+    var pts = all.reduce(function (s, h) { return s + score(h.correct); }, 0);
+    return { all: all, open: open, stats: stats, overall: all.length ? Math.round(100 * pts / all.length) : null };
+  }
+
+  var STATUS = {
+    strong: { label: "Strong", icon: "✓", color: "var(--good)" },
+    ok: { label: "Okay", icon: "●", color: "var(--warning)" },
+    weak: { label: "Weak", icon: "▲", color: "var(--critical)" },
+    few: { label: "Too few answers", icon: "◌", color: "var(--baseline)" },
+    none: { label: "No data", icon: "○", color: "var(--baseline)" }
+  };
+  function statusEl(s) {
+    var wrap = el("span", "status"), dot = el("span", "dot"); dot.style.background = STATUS[s].color;
+    wrap.appendChild(dot); wrap.appendChild(el("span", "icon", STATUS[s].icon)); wrap.appendChild(el("span", null, STATUS[s].label)); return wrap;
+  }
+  function ago(days) { return days === null ? "never" : days === 0 ? "today" : days === 1 ? "yesterday" : days + " days ago"; }
+
+  function action(s) {
+    var name = s.t.name.toLowerCase();
+    if (s.mistakes.length >= 2) return "/study:review-mistakes " + name;
+    if (s.n < 3) return "/study:quiz " + name;
+    if (s.acc !== null && s.acc < 60) return "/study:explain-like " + name;
+    if (s.daysSince !== null && s.daysSince >= 7) return "/study:flashcards " + name;
+    return "/study:quiz " + name;
+  }
+  function reasons(s) {
+    var r = [];
+    if (s.n === 0) r.push("not quizzed yet in this range");
+    else r.push(s.acc + "% accuracy (" + (Math.round(s.pts * 10) / 10) + " of " + s.n + ")");
+    if (s.mistakes.length) r.push(s.mistakes.length + " open mistake" + (s.mistakes.length > 1 ? "s" : ""));
+    if (s.daysSince === null) r.push("never practiced");
+    else if (s.daysSince >= 5) r.push("last practiced " + ago(s.daysSince));
+    if (s.trend === "down") r.push("slipping lately");
+    if (s.wF >= 1.3) r.push("high exam weight");
+    return r.join(" · ");
+  }
+
+  var tip = $("#tooltip");
+  function showTip(s, target, evt) {
+    tip.innerHTML = "";
+    tip.appendChild(el("div", "tv", s.acc === null ? "No answers" : s.acc + "%"));
+    tip.appendChild(el("div", "tn", s.t.name));
+    tip.appendChild(el("div", "tl", s.n ? (Math.round(s.pts * 10) / 10) + " of " + s.n + " correct" : "No quiz answers in this range"));
+    tip.appendChild(el("div", "tl", "Last practiced " + ago(s.daysSince)));
+    if (s.mistakes.length) tip.appendChild(el("div", "tl", s.mistakes.length + " open mistake" + (s.mistakes.length > 1 ? "s" : "")));
+    var r = target.getBoundingClientRect(), x = evt && evt.clientX ? evt.clientX + 14 : r.left + r.width / 2, y = evt && evt.clientY ? evt.clientY + 14 : r.bottom + 6;
+    tip.classList.add("show");
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + "px";
+    tip.style.top = Math.max(8, Math.min(y, innerHeight - h - 8)) + "px";
+  }
+  function hideTip() { tip.classList.remove("show"); }
+
+  function nextExam() {
+    var upcoming = (data.exams || []).map(function (e) { return { e: e, t: time(e.date + "T09:00:00") }; })
+      .filter(function (x) { return x.t !== null && x.t >= NOW - DAY; }).sort(function (a, b) { return a.t - b.t; });
+    return upcoming[0] || null;
+  }
+
+  function tile(span, label, value, note) {
+    var c = el("div", "card " + span); c.appendChild(el("div", "tile-label", label)); c.appendChild(el("div", "tile-value", value));
+    if (note) c.appendChild(el("div", "tile-note", note)); return c;
+  }
+
+  function render(rangeDays) {
+    var a = analyze(rangeDays), grid = $("#grid"); grid.innerHTML = "";
+    var heroCard = el("div", "card span-3");
+    heroCard.appendChild(el("div", "tile-label", "Overall accuracy"));
+    heroCard.appendChild(el("div", "hero", a.overall === null ? "–" : a.overall + "%"));
+    heroCard.appendChild(el("div", "tile-note", a.all.length + " answers" + (rangeDays ? " in the last " + rangeDays + " days" : "")));
+    grid.appendChild(heroCard);
+    var weak = a.stats.filter(function (s) { return s.status === "weak"; }).length;
+    grid.appendChild(tile("span-3", "Weak topics", String(weak), "below " + TARGET + "% accuracy"));
+    grid.appendChild(tile("span-3", "Open mistakes", String(a.open.length), "in your error log"));
+    var ex = nextExam();
+    var left = ex ? Math.max(0, calendarDays(NOW, ex.t)) : null;
+    grid.appendChild(tile("span-3", ex ? ex.e.name : "Next exam", ex ? (left === 0 ? "Today" : left + (left === 1 ? " day" : " days")) : "–", ex ? ex.e.date : "no exam date saved"));
+
+    // Accuracy by topic: one series, sorted weakest first.
+    var chartCard = el("div", "card span-7");
+    chartCard.appendChild(el("h2", null, "Accuracy by topic"));
+    chartCard.appendChild(el("p", "sub", "Weakest first. Partly-right answers count half. The line marks the " + TARGET + "% target."));
+    var sorted = a.stats.slice().sort(function (x, y) { return (x.acc === null ? -1 : x.acc) - (y.acc === null ? -1 : y.acc); });
+    var narrow = matchMedia("(max-width: 560px)").matches;
+    var labelW = narrow ? "0px" : "38%";
+    var chart = el("div", "chart"); chart.style.setProperty("--label-w", narrow ? "0px" : "38%");
+    var axis = el("div", "axis"); axis.style.marginLeft = narrow ? "0" : labelW;
+    [0, 25, 50, 75, 100].forEach(function (v) { var s = el("span", null, v + "%"); s.style.left = v + "%"; axis.appendChild(s); });
+    chart.appendChild(axis);
+    var rows = el("div", "rows");
+    var lines = el("div", "gridlines"); lines.style.left = narrow ? "0" : labelW;
+    [0, 25, 50, 75, 100].forEach(function (v) { var i = el("i", v === 0 ? "base" : ""); i.style.left = v + "%"; lines.appendChild(i); });
+    var tl = el("i", "target"); tl.style.left = TARGET + "%"; lines.appendChild(tl);
+    rows.appendChild(lines);
+    sorted.forEach(function (s) {
+      var row = el("div", "row"); row.tabIndex = 0;
+      row.style.setProperty("--label-w-col", narrow ? "1fr" : labelW);
+      row.setAttribute("aria-label", s.t.name + ": " + (s.acc === null ? "no answers" : s.acc + " percent, " + s.n + " answers") + ", " + STATUS[s.status].label);
+      var name = el("div", "name", s.t.name); name.appendChild(el("small", null, s.n + " answer" + (s.n === 1 ? "" : "s")));
+      var track = el("div", "track"), fill = el("div", "fill" + (s.acc === null ? " none" : ""));
+      fill.style.width = (s.acc === null ? 0 : Math.max(s.acc, 1)) + "%"; track.appendChild(fill);
+      row.appendChild(name); row.appendChild(track); row.appendChild(el("div", "value", s.acc === null ? "–" : s.acc + "%"));
+      row.addEventListener("pointermove", function (e) { showTip(s, row, e); });
+      row.addEventListener("pointerleave", hideTip);
+      row.addEventListener("focus", function () { showTip(s, row, null); });
+      row.addEventListener("blur", hideTip);
+      rows.appendChild(row);
+    });
+    chart.appendChild(rows);
+    chartCard.appendChild(chart);
+    grid.appendChild(chartCard);
+
+    // Recommendations
+    var recCard = el("div", "card span-5");
+    recCard.appendChild(el("h2", null, "Study next"));
+    recCard.appendChild(el("p", "sub", "Ranked by weakness, open mistakes, time since practice and exam weight."));
+    var ranked = a.stats.slice().sort(function (x, y) { return y.priority - x.priority; }).slice(0, 3);
+    var ol = el("ol", "recs");
+    ranked.forEach(function (s) {
+      var li = el("li"), body = el("div");
+      body.appendChild(el("div", "rec-topic", s.t.name));
+      body.appendChild(el("div", "rec-why", reasons(s)));
+      var cmd = action(s), code = el("code", null, cmd), btn = el("button", "copy", "Copy"); btn.type = "button";
+      btn.setAttribute("aria-label", "Copy command " + cmd);
+      btn.addEventListener("click", function () { copyText(cmd, btn); });
+      body.appendChild(code); body.appendChild(btn); li.appendChild(body); ol.appendChild(li);
+    });
+    if (!ranked.length) recCard.appendChild(el("p", "empty", "No topics yet. Ask Claude to ingest your materials."));
+    recCard.appendChild(ol);
+    grid.appendChild(recCard);
+
+    // Table view: every value from the chart, reachable without hovering.
+    var tableCard = el("div", "card span-12");
+    tableCard.appendChild(el("h2", null, "All topics"));
+    var wrap = el("div", "table-wrap"), table = el("table"), thead = el("thead"), hr = el("tr");
+    [["Topic", ""], ["Status", ""], ["Answers", "num"], ["Accuracy", "num"], ["Trend", ""], ["Open mistakes", "num"], ["Last practiced", ""]].forEach(function (h) { hr.appendChild(el("th", h[1], h[0])); });
+    thead.appendChild(hr); table.appendChild(thead);
+    var tbody = el("tbody");
+    a.stats.slice().sort(function (x, y) { return y.priority - x.priority; }).forEach(function (s) {
+      var tr = el("tr");
+      tr.appendChild(el("td", "topic", s.t.name));
+      var st = el("td"); st.appendChild(statusEl(s.status)); tr.appendChild(st);
+      tr.appendChild(el("td", "num", String(s.n)));
+      tr.appendChild(el("td", "num", s.acc === null ? "–" : s.acc + "%"));
+      tr.appendChild(el("td", null, s.trend === "up" ? "↑ improving" : s.trend === "down" ? "↓ slipping" : s.trend === "flat" ? "→ steady" : "–"));
+      tr.appendChild(el("td", "num", String(s.mistakes.length)));
+      tr.appendChild(el("td", null, ago(s.daysSince)));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table); tableCard.appendChild(wrap);
+    grid.appendChild(tableCard);
+
+    // Open mistakes
+    var mCard = el("div", "card span-12");
+    mCard.appendChild(el("h2", null, "Open mistakes"));
+    mCard.appendChild(el("p", "sub", "From your error log. Practice them with /study:review-mistakes."));
+    if (!a.open.length) mCard.appendChild(el("p", "empty", "No open mistakes. Nice work."));
+    a.open.slice().sort(function (x, y) { return (y.times_missed || 1) - (x.times_missed || 1); }).slice(0, 8).forEach(function (m) {
+      var d = el("div", "mistake");
+      d.appendChild(el("div", "q", m.question || "(question not recorded)"));
+      d.appendChild(el("div", "w", (known[m.topic] ? known[m.topic].name : pretty(m.topic || "general")) + " · missed " + (m.times_missed || 1) + "× · " + (m.why_wrong || "")));
+      mCard.appendChild(d);
+    });
+    grid.appendChild(mCard);
+  }
+
+  function copyText(text, btn) {
+    function done(ok) { var old = btn.textContent; btn.textContent = ok ? "Copied" : "Copy failed"; setTimeout(function () { btn.textContent = old; }, 1500); }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    else { var t = document.createElement("textarea"); t.value = text; t.style.position = "fixed"; t.style.opacity = "0"; document.body.appendChild(t); t.select(); var ok = false; try { ok = document.execCommand("copy"); } catch (e) { ok = false; } t.remove(); done(ok); }
+  }
+
+  var range = store.get("swc-weakspots-range", 0);
+  function setRange(days) {
+    range = days; store.set("swc-weakspots-range", days);
+    document.querySelectorAll("#range button").forEach(function (b) { b.setAttribute("aria-pressed", +b.getAttribute("data-days") === days ? "true" : "false"); });
+    render(days);
+  }
+  document.querySelectorAll("#range button").forEach(function (b) { b.addEventListener("click", function () { setRange(+b.getAttribute("data-days")); }); });
+  var resizeTimer; addEventListener("resize", function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(function () { render(range); }, 150); });
+  setRange(range);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flashcards</title>
+<!--
+  Studying with Claude: flashcard template with FSRS spaced repetition.
+  To use: replace the JSON in the application/json script block whose id is "deck-data" (near the end of the file) with your deck. Everything else stays as is.
+  Card types: "basic" (front/back) and "cloze" (text with {{c1::answer}} or {{c1::answer::hint}}).
+  Inside the JSON, write "<\/" instead of "</" and escape backslashes in LaTeX ("\\frac").
+  Scheduling: FSRS-4.5 with its published default parameters. Progress is saved in this browser
+  (localStorage); use Export/Import to move it to another device.
+-->
+<style>
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --surface-2: #efede7; --text: #1c1b19; --muted: #5d5b55;
+    --border: #d9d6ce; --accent: #3550c8; --accent-text: #ffffff; --accent-soft: #e6eafb;
+    --again: #b42323; --hard: #8a5600; --good: #22753a; --easy: #2d5fa8; --cloze: #3550c8;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 6px 22px rgba(0,0,0,.07);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413; --surface: #1d1d1b; --surface-2: #282825; --text: #ecebe6; --muted: #a9a79f;
+      --border: #3a3935; --accent: #91a3ff; --accent-text: #10131f; --accent-soft: #252b45;
+      --again: #ff8a8a; --hard: #ffc470; --good: #6fd389; --easy: #8fb8ff; --cloze: #a8b6ff;
+      --shadow: none; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141413; --surface: #1d1d1b; --surface-2: #282825; --text: #ecebe6; --muted: #a9a79f;
+    --border: #3a3935; --accent: #91a3ff; --accent-text: #10131f; --accent-soft: #252b45;
+    --again: #ff8a8a; --hard: #ffc470; --good: #6fd389; --easy: #8fb8ff; --cloze: #a8b6ff;
+    --shadow: none; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+         padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .logo { font-size: 22px; }
+  .title { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  .tabs { display: flex; gap: 4px; padding: 8px 16px 0; max-width: 760px; margin: 0 auto; overflow-x: auto; }
+  .tab { border: 0; background: transparent; color: var(--muted); padding: 8px 12px; border-radius: 9px 9px 0 0; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .tab[aria-selected="true"] { color: var(--text); background: var(--surface); box-shadow: inset 0 -2px 0 var(--accent); }
+  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 40px; }
+  .counts { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; font-size: 14px; color: var(--muted); margin: 4px 0 14px; }
+  .counts b { font-variant-numeric: tabular-nums; }
+  .n-new { color: var(--easy); } .n-learn { color: var(--again); } .n-due { color: var(--good); }
+  .flash { position: relative; min-height: 300px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+           box-shadow: var(--shadow); padding: 28px 22px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; }
+  .flash:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .face { text-align: center; font-size: 1.2rem; }
+  .face p { margin: 0 0 10px; }
+  .face .back { margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--border); }
+  .flip-in { animation: flip .28s ease-out; }
+  @keyframes flip { from { transform: rotateX(-12deg); opacity: .4; } to { transform: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .flip-in { animation: none; } }
+  .cloze { color: var(--cloze); font-weight: 700; }
+  .blank { display: inline-block; min-width: 3.2em; padding: 0 6px; border-bottom: 2px solid var(--cloze); color: var(--cloze); font-weight: 700; }
+  .card-meta { position: absolute; top: 10px; left: 14px; right: 14px; display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--muted); }
+  .chip { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 12.5px; }
+  .extra { margin-top: 12px; font-size: .95rem; color: var(--muted); }
+  .source { display: block; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .tap { margin-top: 18px; text-align: center; font-size: 13px; color: var(--muted); }
+  .rate { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+  .rate button { border: 1.5px solid var(--border); background: var(--surface); color: var(--text); border-radius: 12px; padding: 10px 4px; font: inherit; font-weight: 650; cursor: pointer; }
+  .rate button small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
+  .rate .again { border-color: var(--again); color: var(--again); }
+  .rate .hard { border-color: var(--hard); color: var(--hard); }
+  .rate .good { border-color: var(--good); color: var(--good); }
+  .rate .easy { border-color: var(--easy); color: var(--easy); }
+  .show { width: 100%; margin-top: 14px; }
+  .btn { border: 0; border-radius: 12px; padding: 12px 18px; background: var(--accent); color: var(--accent-text); font: inherit; font-weight: 650; cursor: pointer; }
+  .btn.secondary { background: var(--surface-2); color: var(--text); }
+  .ghost { border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 10px; padding: 7px 11px; cursor: pointer; font: inherit; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+  .panel h2 { font-size: 1.15rem; margin: 0 0 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .done { text-align: center; padding: 34px 18px; }
+  .done .big { font-size: 2.2rem; }
+  .small { font-size: 13.5px; color: var(--muted); }
+  input[type=search], input[type=number], select { font: inherit; color: var(--text); background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 12px; }
+  input[type=search] { width: 100%; }
+  input[type=range] { width: 200px; max-width: 100%; }
+  .list { display: grid; gap: 10px; margin-top: 12px; }
+  .item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .item .q { font-weight: 600; }
+  .item .a { margin-top: 4px; color: var(--muted); }
+  .item p { margin: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-size: 13px; }
+  code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  pre { text-align: left; background: var(--surface-2); padding: 12px; border-radius: 10px; overflow-x: auto; font-size: .9rem; }
+  pre code { background: none; padding: 0; }
+  .foot { text-align: center; color: var(--muted); font-size: 12.5px; padding: 0 16px 24px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px;
+           border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 5; }
+  .toast.show { opacity: 1; }
+  .hidden { display: none !important; }
+  @media (max-width: 520px) { .flash { min-height: 260px; padding: 30px 16px 22px; } .face { font-size: 1.1rem; } .rate { gap: 6px; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">🗂️</span>
+    <div style="min-width:0"><div id="title" class="title">Flashcards</div><div id="subtitle" class="subtitle"></div></div>
+  </div>
+  <button id="theme" class="ghost" type="button" aria-label="Switch between light and dark mode">◐</button>
+</header>
+<nav class="tabs" role="tablist" aria-label="Views">
+  <button class="tab" role="tab" data-view="study" aria-selected="true">Study</button>
+  <button class="tab" role="tab" data-view="cram" aria-selected="false">Cram</button>
+  <button class="tab" role="tab" data-view="browse" aria-selected="false">All cards</button>
+  <button class="tab" role="tab" data-view="stats" aria-selected="false">Progress</button>
+</nav>
+<main id="app"></main>
+<p class="foot">Studying with Claude · Spaced repetition with FSRS · AI can make mistakes. Check cards against your materials.</p>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<input type="file" id="import-file" accept="application/json,.json" class="hidden">
+
+<script type="application/json" id="deck-data">
+{
+  "id": "demo-photosynthesis",
+  "title": "Photosynthesis: demo deck",
+  "course": "Demo course",
+  "cards": [
+    { "id": "c1", "type": "basic", "front": "Where in the chloroplast do the light-dependent reactions happen?", "back": "In the **thylakoid membranes**.", "topic": "light-reactions", "source": "[S1 ¶5]" },
+    { "id": "c2", "type": "cloze", "text": "The {{c1::Calvin cycle}} fixes carbon dioxide in the {{c2::stroma}}.", "extra": "Also called the light-independent reactions.", "topic": "calvin-cycle", "source": "[S1 ¶7]" },
+    { "id": "c3", "type": "basic", "front": "Where does the oxygen released by photosynthesis come from?", "back": "From **water** molecules split during the light-dependent reactions.", "topic": "light-reactions", "source": "[S1 ¶6]" },
+    { "id": "c4", "type": "cloze", "text": "{{c1::Photosynthesis::process}} converts light energy into chemical energy stored in {{c2::glucose}}.", "topic": "overview", "source": "[S1 ¶1]" },
+    { "id": "c5", "type": "basic", "front": "Overall equation of photosynthesis", "back": "$6\\,\\mathrm{CO_2} + 6\\,\\mathrm{H_2O} \\rightarrow \\mathrm{C_6H_{12}O_6} + 6\\,\\mathrm{O_2}$", "topic": "overview", "source": "[S1 ¶2]" }
+  ]
+}
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (sel, el) { return (el || document).querySelector(sel); };
+  var app = $("#app");
+  var MIN = 60 * 1000, DAY = 24 * 60 * MIN;
+
+  // Storage can be unavailable (private windows, blocked cookies, file previews): never let it break studying.
+  var storageOk = true;
+  var store = {
+    get: function (key, fallback) { try { var v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { storageOk = false; return fallback; } },
+    set: function (key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { storageOk = false; } }
+  };
+
+  // ---------- theme
+  var root = document.documentElement;
+  function applyTheme(t) { if (t === "light" || t === "dark") root.setAttribute("data-theme", t); else root.removeAttribute("data-theme"); }
+  applyTheme(store.get("swc-theme", null));
+  $("#theme").addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") ? root.getAttribute("data-theme") === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    applyTheme(dark ? "light" : "dark"); store.set("swc-theme", dark ? "light" : "dark");
+  });
+
+  // ---------- text rendering (small, safe Markdown subset + optional KaTeX)
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function md(src, stash) {
+    stash = stash || [];
+    function keep(html) { return "\u0000" + (stash.push(html) - 1) + "\u0000"; }
+    var s = String(src == null ? "" : src);
+    s = s.replace(/```[\w-]*\n?([\s\S]*?)```/g, function (_, code) { return keep("<pre><code>" + esc(code.replace(/\n$/, "")) + "</code></pre>"); });
+    s = s.replace(/\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$/g, function (m) { return keep(esc(m)); });
+    s = s.replace(/`([^`\n]+)`/g, function (_, c) { return keep("<code>" + esc(c) + "</code>"); });
+    s = esc(s).replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    var html = s.split(/\n{2,}/).map(function (block) {
+      if (/^\u0000\d+\u0000$/.test(block.trim())) return block;
+      return "<p>" + block.split("\n").join("<br>") + "</p>";
+    }).join("");
+    return html.replace(/\u0000(\d+)\u0000/g, function (_, i) { return stash[+i]; });
+  }
+
+  var rawData = $("#deck-data").textContent;
+  var USES_MATH = /\$[^$\n]+\$|\\\(|\\\[/.test(rawData);
+  var mathState = "idle";
+  function loadScript(url) { return new Promise(function (ok, fail) { var s = document.createElement("script"); s.src = url; s.onload = ok; s.onerror = fail; document.head.appendChild(s); }); }
+  function typeset() {
+    if (!USES_MATH) return;
+    if (mathState === "ready") {
+      try { window.renderMathInElement(app, { throwOnError: false, delimiters: [{ left: "$$", right: "$$", display: true }, { left: "\\[", right: "\\]", display: true }, { left: "$", right: "$", display: false }, { left: "\\(", right: "\\)", display: false }] }); } catch (e) { /* raw TeX */ }
+      return;
+    }
+    if (mathState !== "idle") return;
+    mathState = "loading";
+    var base = "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/";
+    var css = document.createElement("link"); css.rel = "stylesheet"; css.href = base + "katex.min.css"; document.head.appendChild(css);
+    loadScript(base + "katex.min.js").then(function () { return loadScript(base + "contrib/auto-render.min.js"); })
+      .then(function () { mathState = "ready"; typeset(); }, function () { mathState = "failed"; });
+  }
+
+  // ---------- deck
+  var deck;
+  try { deck = JSON.parse(rawData); } catch (e) {
+    app.innerHTML = '<div class="panel"><h2>This deck file is damaged</h2><p>The deck data could not be read: ' + esc(e.message) + "</p><p>Ask Claude to regenerate it.</p></div>";
+    return;
+  }
+  $("#title").textContent = deck.title || "Flashcards";
+  document.title = deck.title || "Flashcards";
+
+  var CLOZE = /\{\{c(\d+)::([\s\S]*?)(?:::([\s\S]*?))?\}\}/g;
+  // One study card per basic note, and one per cloze number in a cloze note (as in Anki).
+  var cards = [];
+  (deck.cards || []).forEach(function (note, i) {
+    var id = String(note.id || "n" + (i + 1));
+    if (note.type === "cloze") {
+      var nums = {}; String(note.text || "").replace(CLOZE, function (_, n) { nums[n] = true; return _; });
+      Object.keys(nums).sort(function (a, b) { return a - b; }).forEach(function (n) { cards.push({ id: id + "::c" + n, note: note, cloze: +n }); });
+    } else {
+      cards.push({ id: id, note: note });
+    }
+  });
+  $("#subtitle").textContent = [deck.course, cards.length + " cards"].filter(Boolean).join(" · ");
+
+  function renderCloze(text, target, reveal) {
+    var stash = [];
+    var replaced = String(text).replace(CLOZE, function (_, n, answer, hint) {
+      var html;
+      if (+n !== target) html = esc(answer);
+      else if (reveal) html = '<span class="cloze">' + esc(answer) + "</span>";
+      else html = '<span class="blank">' + (hint ? esc(hint) : "…") + "</span>";
+      return "\u0000" + (stash.push(html) - 1) + "\u0000";
+    });
+    return md(replaced, stash);
+  }
+  function frontHtml(c) { return c.cloze ? renderCloze(c.note.text, c.cloze, false) : md(c.note.front); }
+  function backHtml(c) { return c.cloze ? renderCloze(c.note.text, c.cloze, true) + (c.note.extra ? '<div class="extra">' + md(c.note.extra) + "</div>" : "") : md(c.note.back); }
+  function plainText(c) { return String(c.cloze ? c.note.text.replace(CLOZE, "$2") : c.note.front + " " + c.note.back).replace(/\*\*|`/g, ""); }
+  function topicName(id) { return id ? String(id).replace(/[-_]+/g, " ").replace(/^\w/, function (ch) { return ch.toUpperCase(); }) : "General"; }
+
+  // ---------- FSRS-4.5 (default parameters from the open-spaced-repetition project)
+  var W = [0.4872, 1.4003, 3.7145, 13.8206, 5.1618, 1.2298, 0.8975, 0.031, 1.6474, 0.1367, 1.0461, 2.1072, 0.0793, 0.3246, 1.587, 0.2272, 2.8755];
+  var DECAY = -0.5, FACTOR = 19 / 81;
+  function clampD(d) { return Math.min(10, Math.max(1, d)); }
+  function initD(g) { return clampD(W[4] - (g - 3) * W[5]); }
+  function initS(g) { return Math.max(0.1, W[g - 1]); }
+  function retrievability(days, s) { return Math.pow(1 + FACTOR * days / s, DECAY); }
+  function intervalFor(s, retention) { return s / FACTOR * (Math.pow(retention, 1 / DECAY) - 1); }
+  function nextD(d, g) { return clampD(W[7] * initD(4) + (1 - W[7]) * (d - W[6] * (g - 3))); }
+  function recallS(d, s, r, g) {
+    return s * (1 + Math.exp(W[8]) * (11 - d) * Math.pow(s, -W[9]) * (Math.exp(W[10] * (1 - r)) - 1) * (g === 2 ? W[15] : 1) * (g === 4 ? W[16] : 1));
+  }
+  function forgetS(d, s, r) { return Math.min(s, W[11] * Math.pow(d, -W[12]) * (Math.pow(s + 1, W[13]) - 1) * Math.exp(W[14] * (1 - r))); }
+  function days(n) { return Math.min(36500, Math.max(1, Math.round(n))); }
+
+  // Returns the new state for each rating 1-4 (Again, Hard, Good, Easy) without changing anything.
+  function preview(st, now) {
+    var retention = progress.settings.retention, out = {};
+    if (!st || st.state === "new") {
+      [1, 2, 3, 4].forEach(function (g) {
+        var s = initS(g), d = initD(g);
+        if (g === 1) out[g] = { s: s, d: d, state: "learning", due: now + MIN };
+        else if (g === 2) out[g] = { s: s, d: d, state: "learning", due: now + 5 * MIN };
+        else out[g] = { s: s, d: d, state: "review", due: now + days(intervalFor(s, retention)) * DAY };
+      });
+    } else if (st.state === "learning" || st.state === "relearning") {
+      out[1] = { s: st.s, d: nextD(st.d, 1), state: st.state, due: now + MIN };
+      out[2] = { s: st.s, d: nextD(st.d, 2), state: st.state, due: now + 5 * MIN };
+      out[3] = { s: st.s, d: nextD(st.d, 3), state: "review", due: now + days(intervalFor(st.s, retention)) * DAY };
+      var easyS = Math.max(st.s * W[16], st.s + 1);
+      out[4] = { s: easyS, d: nextD(st.d, 4), state: "review", due: now + Math.max(days(intervalFor(easyS, retention)), days(intervalFor(st.s, retention)) + 1) * DAY };
+    } else {
+      var elapsed = Math.max(0, (now - st.last) / DAY), r = retrievability(elapsed, st.s), iv = {};
+      out[1] = { s: forgetS(st.d, st.s, r), d: nextD(st.d, 1), state: "relearning", due: now + 10 * MIN, lapse: true };
+      [2, 3, 4].forEach(function (g) { var s = recallS(st.d, st.s, r, g); iv[g] = days(intervalFor(s, retention)); out[g] = { s: s, d: nextD(st.d, g), state: "review" }; });
+      iv[2] = Math.min(iv[2], iv[3]); if (iv[4] <= iv[3]) iv[4] = iv[3] + 1;
+      [2, 3, 4].forEach(function (g) { out[g].due = now + iv[g] * DAY; });
+    }
+    return out;
+  }
+  function label(ms) {
+    var m = ms / MIN;
+    if (m < 1.5) return "<1m"; if (m < 60) return Math.round(m) + "m";
+    var d = ms / DAY;
+    if (d < 1) return Math.round(m / 60) + "h"; if (d < 30) return Math.round(d) + "d";
+    if (d < 365) return (Math.round(d / 3) / 10).toFixed(1).replace(/\.0$/, "") + "mo";
+    return (Math.round(d / 36.5) / 10).toFixed(1).replace(/\.0$/, "") + "y";
+  }
+
+  // ---------- progress
+  var KEY = "swc-fsrs-" + (deck.id || deck.title || "deck");
+  var progress = store.get(KEY, null);
+  if (!progress || typeof progress !== "object" || !progress.cards) progress = { version: 1, cards: {}, settings: {}, days: {}, topics: {} };
+  progress.settings.retention = progress.settings.retention || 0.9;
+  progress.settings.newPerDay = progress.settings.newPerDay == null ? 20 : progress.settings.newPerDay;
+  progress.days = progress.days || {}; progress.topics = progress.topics || {};
+  function saveProgress() { store.set(KEY, progress); }
+  function today() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function dayLog() { var t = today(); progress.days[t] = progress.days[t] || { newSeen: 0, reviews: 0, again: 0 }; return progress.days[t]; }
+
+  function counts(now) {
+    var c = { new: 0, learning: 0, due: 0 };
+    cards.forEach(function (card) {
+      var st = progress.cards[card.id];
+      if (!st || st.state === "new") c.new++;
+      else if (st.due <= now) { if (st.state === "review") c.due++; else c.learning++; }
+    });
+    c.newToday = Math.max(0, Math.min(c.new, progress.settings.newPerDay - dayLog().newSeen));
+    return c;
+  }
+  function nextCard(now) {
+    var learnAhead = now + 20 * MIN, due = [], soon = [], fresh = [];
+    cards.forEach(function (card) {
+      var st = progress.cards[card.id];
+      if (!st || st.state === "new") fresh.push(card);
+      else if (st.due <= now) due.push(card);
+      else if (st.state !== "review" && st.due <= learnAhead) soon.push(card);
+    });
+    var byDue = function (a, b) { return progress.cards[a.id].due - progress.cards[b.id].due; };
+    due.sort(byDue); soon.sort(byDue);
+    // Don't show a sibling (another blank of the same cloze note) right after its partner: it would give the answer away.
+    function pick(list) { for (var i = 0; i < list.length; i++) if (list[i].note !== lastNote) return list[i]; return list[0]; }
+    if (due.length) return pick(due);
+    if (fresh.length && dayLog().newSeen < progress.settings.newPerDay) return pick(fresh);
+    return soon.length ? pick(soon) : null;
+  }
+
+  // ---------- views
+  var view = "study", revealed = false, current = null, cramQueue = [], lastNote = null;
+  document.querySelectorAll(".tab").forEach(function (tab) {
+    tab.addEventListener("click", function () { switchView(tab.getAttribute("data-view")); });
+  });
+  function switchView(v) {
+    view = v; revealed = false; current = null;
+    document.querySelectorAll(".tab").forEach(function (t) { t.setAttribute("aria-selected", t.getAttribute("data-view") === v ? "true" : "false"); });
+    if (v === "cram") cramQueue = cards.slice().sort(function () { return Math.random() - 0.5; });
+    render();
+  }
+
+  function render() {
+    if (!cards.length) { app.innerHTML = '<div class="panel"><h2>No cards yet</h2><p>This deck has no cards.</p></div>'; return; }
+    if (view === "study") renderStudy();
+    else if (view === "cram") renderCram();
+    else if (view === "browse") renderBrowse();
+    else renderStats();
+    typeset();
+  }
+
+  function cardShell(card, isRevealed, metaRight) {
+    var note = card.note;
+    return '<div class="flash" id="flash" tabindex="0" role="button" aria-label="' + (isRevealed ? "Card answer" : "Card question. Press space to show the answer") + '">' +
+      '<div class="card-meta"><span class="chip">' + esc(topicName(note.topic)) + "</span><span>" + (metaRight || "") + "</span></div>" +
+      '<div class="face' + (isRevealed ? " flip-in" : "") + '"><div class="front">' + frontHtml(card) + "</div>" +
+      (isRevealed ? '<div class="back">' + backHtml(card) + (note.source ? '<span class="source">Source: ' + esc(note.source) + "</span>" : "") + "</div>" : "") +
+      "</div>" + (isRevealed ? "" : '<div class="tap">Tap or press Space to show the answer</div>') + "</div>";
+  }
+
+  function renderStudy() {
+    var now = Date.now(), c = counts(now);
+    current = current || nextCard(now);
+    var head = '<div class="counts" aria-label="Cards remaining"><span class="n-new">New <b>' + c.newToday + '</b></span><span class="n-learn">Learning <b>' + c.learning +
+      '</b></span><span class="n-due">Due <b>' + c.due + "</b></span></div>";
+    if (!storageOk) head += '<p class="small" style="text-align:center">This browser is blocking storage, so progress won\'t be saved after you close the page. Use Export on the Progress tab.</p>';
+    if (!current) {
+      var upcoming = cards.map(function (card) { var st = progress.cards[card.id]; return st && st.state !== "new" ? st.due : Infinity; })
+        .reduce(function (a, b) { return Math.min(a, b); }, Infinity);
+      app.innerHTML = head + '<div class="panel done"><div class="big">🎉</div><h2>All caught up</h2><p>' +
+        (isFinite(upcoming) ? "Next review in " + label(upcoming - now) + "." : "You've reached today's limit of new cards.") +
+        '</p><div class="row" style="justify-content:center;margin-top:12px"><button class="btn secondary" id="to-cram" type="button">Cram anyway</button>' +
+        '<button class="btn secondary" id="more-new" type="button">10 more new cards</button></div></div>';
+      $("#to-cram").addEventListener("click", function () { switchView("cram"); });
+      $("#more-new").addEventListener("click", function () { dayLog().newSeen = Math.max(0, dayLog().newSeen - 10); saveProgress(); render(); });
+      return;
+    }
+    var st = progress.cards[current.id];
+    var stateLabel = !st || st.state === "new" ? "New" : st.state === "review" ? "Review" : "Learning";
+    var html = head + cardShell(current, revealed, stateLabel);
+    if (revealed) {
+      var p = preview(st, now);
+      html += '<div class="rate" role="group" aria-label="How well did you remember?">' +
+        [[1, "again", "Again"], [2, "hard", "Hard"], [3, "good", "Good"], [4, "easy", "Easy"]].map(function (r) {
+          return '<button type="button" class="' + r[1] + '" data-g="' + r[0] + '">' + r[2] + "<small>" + esc(label(p[r[0]].due - now)) + "</small></button>";
+        }).join("") + "</div>";
+    } else {
+      html += '<button class="btn show" id="reveal" type="button">Show answer</button>';
+    }
+    app.innerHTML = html;
+    $("#flash").addEventListener("click", function () { if (!revealed) { revealed = true; render(); } });
+    if (revealed) {
+      app.querySelectorAll(".rate button").forEach(function (b) { b.addEventListener("click", function () { rate(+b.getAttribute("data-g")); }); });
+      app.querySelector(".rate .good").focus();
+    } else {
+      $("#reveal").addEventListener("click", function () { revealed = true; render(); });
+    }
+  }
+
+  function rate(g) {
+    var now = Date.now(), st = progress.cards[current.id], next = preview(st, now)[g];
+    var wasNew = !st || st.state === "new";
+    progress.cards[current.id] = {
+      state: next.state, s: next.s, d: next.d, due: next.due, last: now,
+      reps: ((st && st.reps) || 0) + 1, lapses: ((st && st.lapses) || 0) + (next.lapse ? 1 : 0)
+    };
+    var log = dayLog(); log.reviews++; if (g === 1) log.again++; if (wasNew) log.newSeen++;
+    var topic = current.note.topic || "general";
+    var t = progress.topics[topic] = progress.topics[topic] || { reviews: 0, again: 0 };
+    t.reviews++; if (g === 1) t.again++;
+    saveProgress();
+    lastNote = current.note;
+    current = null; revealed = false; render();
+  }
+
+  function renderCram() {
+    if (!cramQueue.length) {
+      app.innerHTML = '<div class="panel done"><div class="big">✅</div><h2>Cram round finished</h2><p class="small">Cram mode doesn\'t change your review schedule.</p>' +
+        '<div class="row" style="justify-content:center;margin-top:12px"><button class="btn" id="again" type="button">Shuffle and go again</button></div></div>';
+      $("#again").addEventListener("click", function () { switchView("cram"); });
+      return;
+    }
+    var card = cramQueue[0];
+    var html = '<div class="counts"><span>Cram · <b>' + cramQueue.length + "</b> left · not scheduled</span></div>" + cardShell(card, revealed, "Cram");
+    html += revealed ? '<div class="rate" style="grid-template-columns:1fr 1fr"><button type="button" class="again" id="miss">Missed it<small>see again soon</small></button><button type="button" class="good" id="knew">Knew it<small>next card</small></button></div>'
+      : '<button class="btn show" id="reveal" type="button">Show answer</button>';
+    app.innerHTML = html;
+    $("#flash").addEventListener("click", function () { if (!revealed) { revealed = true; render(); } });
+    if (revealed) {
+      $("#knew").addEventListener("click", function () { cramQueue.shift(); revealed = false; render(); });
+      $("#miss").addEventListener("click", function () { var c = cramQueue.shift(); cramQueue.splice(Math.min(3, cramQueue.length), 0, c); revealed = false; render(); });
+      $("#knew").focus();
+    } else $("#reveal").addEventListener("click", function () { revealed = true; render(); });
+  }
+
+  function renderBrowse() {
+    app.innerHTML = '<input type="search" id="search" placeholder="Search ' + cards.length + ' cards" aria-label="Search cards"><div class="list" id="list"></div>';
+    var list = $("#list");
+    function draw(q) {
+      q = (q || "").toLowerCase();
+      list.innerHTML = cards.filter(function (c) { return !q || plainText(c).toLowerCase().indexOf(q) >= 0 || String(c.note.topic || "").indexOf(q) >= 0; })
+        .map(function (c) {
+          var st = progress.cards[c.id];
+          var status = !st || st.state === "new" ? "new" : "due in " + label(Math.max(0, st.due - Date.now())) + (st.lapses ? " · " + st.lapses + " lapse" + (st.lapses > 1 ? "s" : "") : "");
+          return '<div class="item"><div class="q">' + (c.cloze ? renderCloze(c.note.text, c.cloze, false) : md(c.note.front)) + '</div><div class="a">' + backHtml(c) +
+            '</div><div class="small" style="margin-top:6px">' + esc(topicName(c.note.topic)) + " · " + esc(status) + (c.note.source ? " · " + esc(c.note.source) : "") + "</div></div>";
+        }).join("") || '<p class="small">No cards match.</p>';
+      typeset();
+    }
+    $("#search").addEventListener("input", function (e) { draw(e.target.value); });
+    draw("");
+  }
+
+  function renderStats() {
+    var now = Date.now(), c = counts(now), seen = 0, mature = 0, leeches = [];
+    cards.forEach(function (card) {
+      var st = progress.cards[card.id];
+      if (st && st.state !== "new") { seen++; if (st.s >= 21) mature++; if ((st.lapses || 0) >= 3) leeches.push(card); }
+    });
+    var week = [0, 0, 0, 0, 0, 0, 0];
+    function dayStart(t) { var x = new Date(t); x.setHours(0, 0, 0, 0); return x.getTime(); }
+    cards.forEach(function (card) {
+      var st = progress.cards[card.id];
+      if (st && st.state !== "new") { var d = Math.round((dayStart(st.due) - dayStart(now)) / DAY); if (d < 7) week[Math.max(0, d)]++; }
+    });
+    var reviews = 0, again = 0; Object.keys(progress.days).forEach(function (d) { reviews += progress.days[d].reviews; again += progress.days[d].again; });
+    var topics = Object.keys(progress.topics).map(function (t) { var x = progress.topics[t]; return { t: t, reviews: x.reviews, recall: x.reviews ? Math.round(100 * (1 - x.again / x.reviews)) : null }; })
+      .sort(function (a, b) { return (a.recall == null ? 101 : a.recall) - (b.recall == null ? 101 : b.recall); });
+
+    app.innerHTML =
+      '<div class="panel"><h2>Deck progress</h2><table><tbody>' +
+      "<tr><td>Cards studied</td><td><b>" + seen + "</b> of " + cards.length + "</td></tr>" +
+      "<tr><td>Well learned (stability 21+ days)</td><td><b>" + mature + "</b></td></tr>" +
+      "<tr><td>Due now</td><td><b>" + (c.due + c.learning) + "</b></td></tr>" +
+      "<tr><td>Recall rate (all reviews)</td><td><b>" + (reviews ? Math.round(100 * (1 - again / reviews)) + "%" : "–") + "</b> over " + reviews + " reviews</td></tr>" +
+      "<tr><td>Reviews due in the next 7 days</td><td>" + week.map(function (n, i) { return (i === 0 ? "today " : "") + n; }).join(" · ") + "</td></tr>" +
+      "</tbody></table></div>" +
+      (topics.length ? '<div class="panel"><h2>Recall by topic</h2><table><thead><tr><th>Topic</th><th>Reviews</th><th>Recalled</th></tr></thead><tbody>' +
+        topics.map(function (x) { return "<tr><td>" + esc(topicName(x.t)) + "</td><td>" + x.reviews + "</td><td>" + (x.recall == null ? "–" : x.recall + "%") + "</td></tr>"; }).join("") + "</tbody></table></div>" : "") +
+      (leeches.length ? '<div class="panel"><h2>Cards you keep forgetting</h2><p class="small">Forgotten 3 or more times. Ask Claude to explain these or rewrite them.</p><ul>' +
+        leeches.map(function (card) { return "<li>" + esc(plainText(card).slice(0, 140)) + "</li>"; }).join("") + "</ul></div>" : "") +
+      '<div class="panel"><h2>Settings</h2>' +
+      '<div class="row"><label for="ret">Target recall</label><input type="range" id="ret" min="0.80" max="0.97" step="0.01" value="' + progress.settings.retention + '"><b id="ret-v">' + Math.round(progress.settings.retention * 100) + "%</b></div>" +
+      '<p class="small">Higher means more frequent reviews. 90% suits most students; raise it in the last weeks before an exam.</p>' +
+      '<div class="row" style="margin-top:8px"><label for="npd">New cards per day</label><input type="number" id="npd" min="0" max="500" value="' + progress.settings.newPerDay + '" style="width:90px"></div></div>' +
+      '<div class="panel"><h2>Back up or move your progress</h2><p class="small">Progress lives in this browser only. Export it to keep a copy or study on another device.</p>' +
+      '<div class="row"><button class="btn secondary" id="export" type="button">Export progress</button><button class="btn secondary" id="import" type="button">Import progress</button>' +
+      '<button class="btn secondary" id="summary" type="button">Copy summary for Claude</button><button class="btn secondary" id="reset" type="button">Reset progress</button></div></div>';
+
+    $("#ret").addEventListener("input", function (e) { progress.settings.retention = +e.target.value; $("#ret-v").textContent = Math.round(+e.target.value * 100) + "%"; saveProgress(); });
+    $("#npd").addEventListener("change", function (e) { progress.settings.newPerDay = Math.max(0, parseInt(e.target.value, 10) || 0); saveProgress(); });
+    $("#export").addEventListener("click", function () { download((deck.id || "deck") + "-progress.json", JSON.stringify({ deck: deck.id, exported: new Date().toISOString(), progress: progress }, null, 2)); });
+    $("#import").addEventListener("click", function () { $("#import-file").click(); });
+    $("#summary").addEventListener("click", function () {
+      var summary = { deck: deck.id, title: deck.title, date: today(), studied: seen, total: cards.length, wellLearned: mature, recallByTopic: topics,
+        keepForgetting: leeches.map(function (card) { return { id: card.id, topic: card.note.topic || null, text: plainText(card) }; }) };
+      copy("Here is my flashcard progress. Please use it to update my weak spots.\n\n```json\n" + JSON.stringify(summary, null, 2) + "\n```");
+    });
+    $("#reset").addEventListener("click", function () {
+      if (window.confirm("Reset all progress for this deck? This can't be undone unless you exported it.")) { progress = { version: 1, cards: {}, settings: progress.settings, days: {}, topics: {} }; saveProgress(); render(); }
+    });
+  }
+
+  $("#import-file").addEventListener("change", function (e) {
+    var file = e.target.files && e.target.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(reader.result), incoming = parsed.progress || parsed;
+        if (!incoming.cards) throw new Error("no progress found");
+        progress = incoming; progress.settings = progress.settings || { retention: 0.9, newPerDay: 20 }; progress.days = progress.days || {}; progress.topics = progress.topics || {};
+        saveProgress(); toast("Progress imported."); render();
+      } catch (err) { toast("That file isn't a progress export."); }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  function download(name, text) {
+    var blob = new Blob([text], { type: "application/json" }), link = document.createElement("a");
+    link.href = URL.createObjectURL(blob); link.download = name; document.body.appendChild(link); link.click();
+    setTimeout(function () { URL.revokeObjectURL(link.href); link.remove(); }, 500);
+  }
+  function toast(msg) { var t = $("#toast"); t.textContent = msg; t.classList.add("show"); setTimeout(function () { t.classList.remove("show"); }, 2200); }
+  function copy(text) {
+    function fallback() {
+      var area = document.createElement("textarea"); area.value = text; area.style.position = "fixed"; area.style.opacity = "0";
+      document.body.appendChild(area); area.select(); var ok = false; try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+      area.remove(); toast(ok ? "Copied. Paste it into your chat with Claude." : "Couldn't copy here. Try Export instead.");
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(function () { toast("Copied. Paste it into your chat with Claude."); }, fallback);
+    else fallback();
+  }
+
+  // Keyboard: Space or Enter shows the answer; 1-4 rate (Again, Hard, Good, Easy).
+  document.addEventListener("keydown", function (e) {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.metaKey || e.ctrlKey || e.altKey) return;
+    if ((view === "study" || view === "cram") && !revealed && (e.key === " " || e.key === "Enter")) {
+      if (e.target.tagName === "BUTTON" && e.target.id !== "reveal") return;
+      if ($("#flash")) { e.preventDefault(); revealed = true; render(); }
+    } else if (view === "study" && revealed && /^[1-4]$/.test(e.key)) { e.preventDefault(); rate(+e.key); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

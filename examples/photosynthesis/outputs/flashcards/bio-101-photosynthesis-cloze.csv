@@ -1,0 +1,15 @@
+#separator:Comma
+#html:true
+#notetype:Cloze
+#deck:Biology 101::Photosynthesis
+#columns:Text,Back Extra,Tags,GUID
+#tags column:3
+#guid column:4
+{{c1::Photosynthesis}} converts light energy into chemical energy stored in {{c2::sugars}}.,"Carried out by plants, algae and cyanobacteria.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶1]</span>",bio-101 overview,swc-b0e5f3c35bf08f55
+Organisms that make their own food from inorganic molecules are called {{c1::autotrophs (producers)}}.,"<span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶1]</span>",bio-101 overview,swc-2dda31df8df93e05
+"The fluid inside a chloroplast is the {{c1::stroma}}; the flattened membrane sacs inside it are {{c2::thylakoids}}, stacked into {{c3::grana}}.","<span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶3]</span>",bio-101 chloroplast-structure,swc-107aa422bdbb032e
+"At the end of the electron transport chain, electrons reduce {{c1::NADP⁺}} to {{c2::NADPH}}.","<span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶5]</span>",bio-101 light-reactions,swc-59ff0c46dc3fcfdd
+Splitting water to replace chlorophyll's lost electrons is called {{c1::photolysis}}.,"\(2\,\mathrm{H_2O} \rightarrow 4\,\mathrm{H^+} + 4\,e^- + \mathrm{O_2}\)<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶6]</span>",bio-101 light-reactions,swc-9aabe938d6c96134
+"In carbon fixation, the enzyme {{c1::Rubisco}} attaches CO₂ to the five-carbon sugar {{c2::RuBP}}.","<span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶7]</span>",bio-101 calvin-cycle,swc-4c5b45a3a2e28dfb
+"For every {{c1::three}} molecules of CO₂ fixed, one G3P leaves the Calvin cycle.","<span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶8]</span>",bio-101 calvin-cycle,swc-94808c2b4aaef4d6
+"A {{c1::limiting factor}} is whichever of light intensity, CO₂ concentration and temperature is in shortest supply.","Raising the other two doesn't increase the rate until it's increased.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶9]</span>",bio-101 limiting-factors,swc-f5b0afca898594d9

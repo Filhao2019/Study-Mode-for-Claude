@@ -1,0 +1,25 @@
+#separator:Comma
+#html:true
+#notetype:Basic
+#deck:Biology 101::Photosynthesis
+#columns:Front,Back,Tags,GUID
+#tags column:3
+#guid column:4
+Photosynthesis: write the overall equation.,"\(6\,\mathrm{CO_2} + 6\,\mathrm{H_2O} \rightarrow \mathrm{C_6H_{12}O_6} + 6\,\mathrm{O_2}\) (driven by light energy)<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶2]</span>",bio-101 overview equation,swc-2d972ea82cb8b891
+"In a leaf, which cells carry out most photosynthesis?","The <b>mesophyll</b> cells.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶3]</span>",bio-101 chloroplast-structure,swc-bf2d8ecff66d1491
+How does carbon dioxide get into a leaf for photosynthesis?,"Through small pores called <b>stomata</b>.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶3]</span>",bio-101 chloroplast-structure,swc-84abc202093b8b76
+How does water reach the leaf for photosynthesis?,"From the roots through the <b>xylem</b>.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶3]</span>",bio-101 chloroplast-structure,swc-1a8cb959c3071be0
+Why do leaves look green?,"Chlorophyll absorbs mainly <b>red and blue</b> light and <b>reflects green</b>.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶4]</span>",bio-101 chloroplast-structure,swc-cc2051694ccd01c0
+Photosynthesis: where do the light-dependent reactions take place?,"In the <b>thylakoid membranes</b>.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶5]</span>",bio-101 light-reactions,swc-2a3b9affb84b2d3c
+Light-dependent reactions: what does light do to chlorophyll?,"It <b>excites electrons</b> in chlorophyll molecules grouped into photosystems.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶5]</span>",bio-101 light-reactions,swc-d90defc5a79e57b8
+Light-dependent reactions: what is the energy released along the electron transport chain used for?,"To <b>pump protons (H⁺)</b> into the thylakoid space.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶5]</span>",bio-101 light-reactions,swc-926c30c33b7d35d8
+What flows through ATP synthase to make ATP in the light-dependent reactions?,"<b>Protons (H⁺)</b> flowing back out of the thylakoid space (not electrons).<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶5]</span>",bio-101 light-reactions common-mistake,swc-1ffff5d7a759d14e
+Where does the oxygen released by photosynthesis come from?,"From <b>water</b> (photolysis), not from carbon dioxide.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶6]</span>",bio-101 light-reactions common-mistake,swc-8cfb193c9178a7ef
+What evidence shows that the oxygen released in photosynthesis comes from water?,"When water was labelled with a heavy oxygen isotope, the label ended up in the released O₂.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶6]</span>",bio-101 light-reactions,swc-b44ff822135ac8b6
+Photosynthesis: where does the Calvin cycle take place?,"In the <b>stroma</b>.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶7]</span>",bio-101 calvin-cycle,swc-23554b4b79fc319e
+Why does the Calvin cycle stop soon after a plant is put in the dark?,"It depends on <b>ATP and NADPH</b> from the light-dependent reactions, which stop without light.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶7]</span>",bio-101 calvin-cycle common-mistake,swc-80264dab172d33eb
+Calvin cycle: what does the unstable six-carbon product of carbon fixation split into?,"Two three-carbon molecules of <b>3-PGA</b>.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶7]</span>",bio-101 calvin-cycle,swc-ef1cf0069976608c
+"Calvin cycle, reduction phase: what do NADPH and ATP each supply?","<b>NADPH</b> supplies the electrons; <b>ATP</b> supplies the energy.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶8]</span>",bio-101 calvin-cycle common-mistake,swc-e39d53cd0919261c
+Calvin cycle: what happens to most of the G3P produced?,"It's used, with more ATP, to <b>regenerate RuBP</b> so the cycle can continue.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶8]</span>",bio-101 calvin-cycle,swc-cb0e2c6ce62da171
+How many turns of the Calvin cycle make one glucose molecule?,"<b>Six</b> (glucose needs 2 G3P, and one G3P leaves per 3 CO₂ fixed).<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶8]</span>",bio-101 calvin-cycle,swc-e50e6bccdf859a6e
+Why does the rate of photosynthesis fall above an optimum temperature?,"Enzymes such as <b>Rubisco</b> start to <b>denature</b>.<br><br><span style=""font-size:0.8em;opacity:0.7"">Source: [S1 ¶9]</span>",bio-101 limiting-factors,swc-22c6d27ba184e08c

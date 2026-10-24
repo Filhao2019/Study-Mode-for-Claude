@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Student data created when the plugin is used inside this folder
+study/
+
+# OS clutter
+.DS_Store
+Thumbs.db

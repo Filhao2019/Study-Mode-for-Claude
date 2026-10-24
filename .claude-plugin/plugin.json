@@ -1,13 +1,24 @@
 {
-  "name": "study-mode",
-  "version": "1.0.0",
-  "description": "Studying with Claude: Socratic, step-by-step tutoring with scaffolded lessons, knowledge checks, quizzes, flashcards and study plans instead of handing over answers.",
+  "name": "study",
+  "displayName": "Studying with Claude",
+  "version": "2.0.0",
+  "description": "Turn your course materials into cited notes, adaptive quizzes, spaced-repetition flashcards, exam plans, mock exams and podcast scripts, with a Socratic Study Mode that guides you instead of handing over answers.",
   "author": {
     "name": "Filhao2019",
     "url": "https://github.com/Filhao2019"
   },
-  "homepage": "https://github.com/Filhao2019/Study-Mode-for-Claude",
-  "repository": "https://github.com/Filhao2019/Study-Mode-for-Claude",
+  "homepage": "https://github.com/Filhao2019/studying-with-claude",
+  "repository": "https://github.com/Filhao2019/studying-with-claude",
   "license": "MIT",
-  "keywords": ["study", "tutor", "education", "socratic", "learning", "quiz", "flashcards"]
+  "keywords": [
+    "study",
+    "education",
+    "exam-prep",
+    "flashcards",
+    "spaced-repetition",
+    "quiz",
+    "notes",
+    "students",
+    "socratic"
+  ]
 }

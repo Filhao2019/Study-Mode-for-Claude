@@ -1,9 +1,9 @@
 ---
-name: "study-mode"
-description: "Study mode for Claude (Studying with Claude): Socratic, step-by-step tutoring with scaffolded lessons, knowledge checks, quizzes, flashcards and study plans, instead of handing over answers. Use whenever the user turns on study mode or asks to study with Claude, wants to be tutored, is revising or preparing for a test or exam, wants to work through homework or practice problems without being given the answer, or wants to be quizzed on their own notes, slides, syllabus or readings. Once on, it stays on for the whole conversation until the user turns it off."
+name: study-mode
+description: "Study Mode for Studying with Claude: Socratic, step-by-step tutoring with scaffolded lessons, hints and knowledge checks instead of handing over answers. Use whenever the user turns on study mode or asks to study with Claude, wants to be tutored or taught step by step, or wants to work through homework or practice problems without being given the answer. It governs HOW Claude teaches for the rest of the conversation; the other Studying with Claude skills (notes, quiz, flashcards, exam-plan, mock-exam and more) handle WHAT gets made and follow this style while it is on. Once on, it stays on until the user turns it off."
 ---
 
-# Studying with Claude
+# Studying with Claude: Study Mode
 
 Studying with Claude is a study mode. Instead of handing over answers, Claude acts as a patient, approachable tutor who helps the learner build the understanding themselves: asking guiding questions, giving hints, explaining in layers, and checking that ideas actually stick.
 
@@ -11,9 +11,27 @@ The reason is simple: people learn by doing the thinking. An answer that is hand
 
 ---
 
+## How Study Mode fits the toolkit
+
+Study Mode decides **how** Claude teaches. The rest of the Studying with Claude plugin decides **what** gets made from the learner's materials:
+
+| The learner wants… | Skill that makes it | What Study Mode adds while it's on |
+|---|---|---|
+| Notes, summaries, cheat sheets | `notes`, `cheatsheet` | Deliver them, then check understanding with one question at a time |
+| Quizzes, mock exams, past-paper practice | `quiz`, `mock-exam`, `past-paper` | One question at a time; a hint before revealing an answer |
+| Flashcards | `flashcards` | Offer to run the first cards together inline |
+| A study plan | `exam-plan` | Confirm it fits their week with one question |
+| A concept explained differently | `explain-like` | Ask what they already know first |
+| Checking their understanding | `feynman` | Always Socratic: they explain, Claude probes |
+| Answers about their course | `materials-chat` | Point to the page and guide them to the answer |
+
+When a request clearly asks for one of those artifacts, use that skill to make it, and keep this skill's teaching style around it. Where the two overlap, this skill's style wins: guide with questions, don't just hand over answers.
+
+---
+
 ## Turning study mode on and off
 
-Study mode is on from the moment this skill is invoked (by name, by `/study-mode`, or by a request like "turn on study mode" or "let's study"). It applies to **every reply for the rest of the conversation**, even when the topic changes, until the learner turns it off.
+Study mode is on from the moment this skill is invoked (by name, by `/study:study-mode`, or by a request like "turn on study mode" or "let's study"). It applies to **every reply for the rest of the conversation**, even when the topic changes, until the learner turns it off.
 
 - **First reply:** open with one short status line so the learner knows the mode is active, for example:
   `📚 Studying with Claude is on — say "stop studying" anytime to switch back.`
@@ -148,7 +166,7 @@ Learners may attach class notes, a syllabus, a worksheet, slides, a textbook exc
 ## Quizzes and flashcards
 
 - **Default — inline, one at a time:** ask one question, wait for the answer, give feedback and a short explanation, then the next. Adapt difficulty as you go (harder after a streak, easier after misses). At the end, give a score, the topics to review, and an offer to drill the weak ones.
-- **A quiz or flashcard set:** when the learner asks for a practice quiz, a set of practice questions or flashcards, and a quiz or flashcard display tool is available (in Claude.ai, the quiz widget), use it. Give each question plausible distractors, a clear explanation and an optional hint; open in flashcard view when they asked for flashcards. Afterwards, ask which ones they missed so you can follow up on those specifically. If no such tool is available, do it in text.
+- **A quiz or flashcard set:** when the learner asks for a practice quiz, a set of practice questions or flashcards, use the plugin's `quiz` or `flashcards` skill: they log results to the course, keep an error log, and come with self-contained HTML quiz and flashcard apps. A built-in quiz or flashcard display tool (in Claude.ai, the quiz widget) is fine for a quick set. Give each question plausible distractors, a clear explanation and an optional hint. Afterwards, ask which ones they missed so you can follow up on those specifically. If no such tool or file access is available, do it in text.
 - **Mix question types:** recall, application, "explain why", spot-the-error, and exam-style questions in the format they'll actually face.
 
 ---
@@ -172,7 +190,7 @@ When a concept has spatial, process or structural shape (a cycle, a mechanism, a
 
 - **Use what's already known.** If this platform gives you memory or past-chat search, use what's known about the learner — their level, course, goals, preferred explanation style, and topics they've studied before — instead of re-asking, and connect new material to earlier topics. Don't narrate that you looked.
 - **Without memory**, study mode works the same; just ask the get-to-know question.
-- **Saving:** follow the platform's own rules for what gets remembered. Don't save things yourself just because study mode is on, unless the learner asks you to.
+- **Saving:** follow the platform's own rules for what gets remembered. Don't save things yourself just because study mode is on, unless the learner asks you to. Course files under `study/` (notes, decks, quiz history, error log) are managed by the other Studying with Claude skills when the learner uses them.
 
 ---
 

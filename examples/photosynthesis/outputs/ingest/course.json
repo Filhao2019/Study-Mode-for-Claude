@@ -1,0 +1,24 @@
+{
+  "slug": "bio-101",
+  "name": "Biology 101",
+  "level": "high school / first-year university",
+  "language": "en",
+  "guide": null,
+  "exams": [
+    {
+      "slug": "unit-test",
+      "name": "Unit test: photosynthesis",
+      "date": "2026-11-14",
+      "format": "20 multiple choice + 3 short answer, 50 minutes",
+      "topics": ["overview", "chloroplast-structure", "light-reactions", "calvin-cycle", "limiting-factors"]
+    }
+  ],
+  "topics": [
+    { "id": "photosynthesis", "name": "Photosynthesis", "parent": null, "sources": ["S1 ¶1-¶11"], "weight": null },
+    { "id": "overview", "name": "Overview and overall equation", "parent": "photosynthesis", "sources": ["S1 ¶1-¶2"], "weight": null },
+    { "id": "chloroplast-structure", "name": "Chloroplast structure and pigments", "parent": "photosynthesis", "sources": ["S1 ¶3-¶4"], "weight": null },
+    { "id": "light-reactions", "name": "Light-dependent reactions", "parent": "photosynthesis", "sources": ["S1 ¶5-¶6"], "weight": null },
+    { "id": "calvin-cycle", "name": "Calvin cycle", "parent": "photosynthesis", "sources": ["S1 ¶7-¶8"], "weight": null },
+    { "id": "limiting-factors", "name": "Limiting factors", "parent": "photosynthesis", "sources": ["S1 ¶9"], "weight": null }
+  ]
+}

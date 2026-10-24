@@ -1,0 +1,14 @@
+{
+  "sources": [
+    {
+      "id": "S1",
+      "title": "Photosynthesis handout (week 5)",
+      "file": "sources/S1-photosynthesis-handout.md",
+      "original": "examples/photosynthesis/input.md",
+      "type": "text",
+      "kind": "handout",
+      "added": "2026-10-23",
+      "notes": "¶10 is marked by the lecturer as not examined; ¶11 is an exam tip."
+    }
+  ]
+}

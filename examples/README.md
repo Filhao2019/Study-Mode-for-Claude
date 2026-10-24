@@ -1,5 +1,7 @@
 # Example sessions
 
+For a full worked example of the study toolkit (ingest, notes, quiz, flashcards) see [`photosynthesis/`](photosynthesis/). The sessions below show Study Mode's tutoring style.
+
 Short illustrations of how Studying with Claude behaves. Real conversations will vary.
 
 ---

@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practice Quiz</title>
+<!--
+  Studying with Claude: practice quiz template.
+  To use: replace the JSON in the application/json script block whose id is "quiz-data" (near the end of the file) with your quiz. Everything else stays as is.
+  Question types: mcq, tf, fill, short, significance. See the quiz skill for the full format.
+  Inside the JSON, write "<\/" instead of "</" and escape backslashes in LaTeX ("\\frac").
+-->
+<style>
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --surface-2: #efede7; --text: #1c1b19; --muted: #5d5b55;
+    --border: #d9d6ce; --accent: #3550c8; --accent-text: #ffffff; --accent-soft: #e6eafb;
+    --good: #22753a; --good-bg: #e3f3e7; --bad: #b42323; --bad-bg: #fbe9e9; --warn: #8a5600; --warn-bg: #fff1d9;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413; --surface: #1d1d1b; --surface-2: #282825; --text: #ecebe6; --muted: #a9a79f;
+      --border: #3a3935; --accent: #91a3ff; --accent-text: #10131f; --accent-soft: #252b45;
+      --good: #6fd389; --good-bg: #1a3122; --bad: #ff8a8a; --bad-bg: #3a1d1d; --warn: #ffc470; --warn-bg: #39291a;
+      --shadow: none; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141413; --surface: #1d1d1b; --surface-2: #282825; --text: #ecebe6; --muted: #a9a79f;
+    --border: #3a3935; --accent: #91a3ff; --accent-text: #10131f; --accent-soft: #252b45;
+    --good: #6fd389; --good-bg: #1a3122; --bad: #ff8a8a; --bad-bg: #3a1d1d; --warn: #ffc470; --warn-bg: #39291a;
+    --shadow: none; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+         padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .logo { font-size: 22px; }
+  .title { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  .progress { height: 4px; background: var(--surface-2); }
+  #progress-fill { height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+  main { max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; outline: none; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  h1, h2, h3 { line-height: 1.25; margin: 0 0 12px; }
+  h2 { font-size: 1.3rem; }
+  p { margin: 0 0 10px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .chip { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 12.5px; }
+  .prompt { font-size: 1.08rem; margin-bottom: 16px; }
+  .prompt p:last-child { margin-bottom: 0; }
+  .options { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; padding: 12px 14px; border-radius: 10px;
+         border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+  .opt:hover:not([disabled]) { border-color: var(--accent); }
+  .opt[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .opt.correct { border-color: var(--good); background: var(--good-bg); }
+  .opt.wrong { border-color: var(--bad); background: var(--bad-bg); }
+  .opt[disabled] { cursor: default; }
+  .opt .key { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 650; font-size: 13px;
+              background: var(--surface-2); color: var(--muted); }
+  .opt p { margin: 0; }
+  input[type=text], textarea { width: 100%; font: inherit; color: var(--text); background: var(--surface); border: 1.5px solid var(--border);
+              border-radius: 10px; padding: 11px 13px; }
+  textarea { min-height: 130px; resize: vertical; }
+  input[type=text]:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  button { font: inherit; }
+  .btn { border: 0; border-radius: 10px; padding: 11px 18px; background: var(--accent); color: var(--accent-text); font-weight: 600; cursor: pointer; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .btn.secondary { background: var(--surface-2); color: var(--text); }
+  .ghost { border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 10px; padding: 7px 11px; cursor: pointer; }
+  .feedback { margin-top: 16px; padding: 14px 16px; border-radius: 10px; border-left: 4px solid var(--border); background: var(--surface-2); }
+  .feedback.good { border-color: var(--good); background: var(--good-bg); }
+  .feedback.bad { border-color: var(--bad); background: var(--bad-bg); }
+  .feedback.partial { border-color: var(--warn); background: var(--warn-bg); }
+  .feedback strong.verdict { display: block; margin-bottom: 4px; }
+  .source { display: block; margin-top: 8px; color: var(--muted); font-size: 13.5px; }
+  .hint { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--accent-soft); }
+  .model { margin-top: 14px; padding: 14px 16px; border-radius: 10px; background: var(--surface-2); }
+  .model ul { margin: 6px 0 0; padding-left: 20px; }
+  .score { font-size: 2.6rem; font-weight: 700; line-height: 1; margin: 6px 0 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .meter { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; min-width: 60px; }
+  .meter > span { display: block; height: 100%; background: var(--accent); }
+  .missed { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px; }
+  .missed:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+  .small { font-size: 13.5px; color: var(--muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  pre { background: var(--surface-2); padding: 12px; border-radius: 10px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  .foot { text-align: center; color: var(--muted); font-size: 12.5px; padding: 0 16px 24px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px;
+           border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (max-width: 520px) { .card { padding: 16px; } .btn { flex: 1 1 auto; } .score { font-size: 2.2rem; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">📚</span>
+    <div style="min-width:0"><div id="title" class="title">Practice quiz</div><div id="subtitle" class="subtitle"></div></div>
+  </div>
+  <button id="theme" class="ghost" type="button" aria-label="Switch between light and dark mode">◐</button>
+</header>
+<div class="progress" aria-hidden="true"><div id="progress-fill"></div></div>
+<main id="app" tabindex="-1"></main>
+<p class="foot">Studying with Claude · AI can make mistakes. Check answers against your own materials.</p>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script type="application/json" id="quiz-data">
+{
+  "id": "demo-photosynthesis",
+  "title": "Photosynthesis: demo quiz",
+  "course": "Demo course",
+  "instructions": "Answer each question, check it, and read the explanation before moving on.",
+  "topics": { "overview": "Overview", "light-reactions": "Light-dependent reactions", "calvin-cycle": "Calvin cycle" },
+  "questions": [
+    { "id": "q1", "type": "mcq", "topic": "light-reactions", "difficulty": 1,
+      "prompt": "Where do the **light-dependent reactions** take place?",
+      "options": ["In the stroma", "In the thylakoid membranes", "In the mitochondria", "In the cell wall"],
+      "answer": 1, "hint": "Think about where chlorophyll is embedded.",
+      "explanation": "The pigments and electron carriers sit in the thylakoid membranes, so that is where light energy is captured.",
+      "source": "[S1 ¶4-¶5]" },
+    { "id": "q2", "type": "tf", "topic": "light-reactions", "difficulty": 2,
+      "prompt": "The oxygen released by photosynthesis comes from carbon dioxide.",
+      "answer": false,
+      "explanation": "The oxygen comes from water molecules that are split to replace electrons lost by chlorophyll.",
+      "source": "[S1 ¶6]" },
+    { "id": "q3", "type": "fill", "topic": "calvin-cycle", "difficulty": 1,
+      "prompt": "The Calvin cycle takes place in the ________ of the chloroplast.",
+      "answer": ["stroma"],
+      "explanation": "The Calvin cycle enzymes, including Rubisco, are dissolved in the stroma.",
+      "source": "[S1 ¶7]" },
+    { "id": "q4", "type": "short", "topic": "overview", "difficulty": 2,
+      "prompt": "Write the overall equation for photosynthesis and say what each side represents.",
+      "modelAnswer": "$6\\,\\mathrm{CO_2} + 6\\,\\mathrm{H_2O} \\rightarrow \\mathrm{C_6H_{12}O_6} + 6\\,\\mathrm{O_2}$, driven by light energy. The left side is the raw materials; the right side is glucose (stored chemical energy) and oxygen released as a by-product.",
+      "keyPoints": ["Correct reactants: carbon dioxide and water", "Correct products: glucose and oxygen", "Light as the energy source", "Balanced coefficients (6, 6, 1, 6)"],
+      "explanation": "The equation summarizes many steps; it is a net balance, not a single reaction.",
+      "source": "[S1 ¶2]" },
+    { "id": "q5", "type": "significance", "topic": "calvin-cycle", "difficulty": 3,
+      "prompt": "Explain the significance of the enzyme **Rubisco**.",
+      "modelAnswer": "Rubisco fixes carbon dioxide by attaching it to RuBP, the step that brings inorganic carbon into living matter. Almost all the carbon in food chains passes through this reaction, so it links the atmosphere to the biosphere.",
+      "keyPoints": ["Catalyzes carbon fixation (CO2 + RuBP)", "First step of the Calvin cycle", "Entry point of inorganic carbon into organic molecules", "Wider importance for food chains or the carbon cycle"],
+      "explanation": "\"Explain the significance\" questions want the role and why it matters beyond the immediate step.",
+      "source": "[S1 ¶7-¶8]" }
+  ]
+}
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (sel, el) { return (el || document).querySelector(sel); };
+  var app = $("#app");
+
+  // Storage can be unavailable (private windows, blocked cookies, file previews): never let it break the quiz.
+  var store = {
+    get: function (key, fallback) { try { var v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; } },
+    set: function (key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* keep going without saving */ } },
+    remove: function (key) { try { localStorage.removeItem(key); } catch (e) { /* ignore */ } }
+  };
+
+  // ---------- theme
+  var root = document.documentElement;
+  function applyTheme(t) { if (t === "light" || t === "dark") root.setAttribute("data-theme", t); else root.removeAttribute("data-theme"); }
+  applyTheme(store.get("swc-theme", null));
+  $("#theme").addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") ? root.getAttribute("data-theme") === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    applyTheme(dark ? "light" : "dark");
+    store.set("swc-theme", dark ? "light" : "dark");
+  });
+
+  // ---------- text rendering (small, safe Markdown subset + optional KaTeX)
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function md(src) {
+    var stash = [];
+    function keep(html) { return "\u0000" + (stash.push(html) - 1) + "\u0000"; }
+    var s = String(src == null ? "" : src);
+    s = s.replace(/```[\w-]*\n?([\s\S]*?)```/g, function (_, code) { return keep("<pre><code>" + esc(code.replace(/\n$/, "")) + "</code></pre>"); });
+    s = s.replace(/\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$/g, function (m) { return keep(esc(m)); });
+    s = s.replace(/`([^`\n]+)`/g, function (_, c) { return keep("<code>" + esc(c) + "</code>"); });
+    s = esc(s).replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    var html = s.split(/\n{2,}/).map(function (block) {
+      var lines = block.split("\n");
+      if (/^\u0000\d+\u0000$/.test(block.trim())) return block;
+      if (lines.every(function (l) { return /^\s*[-•]\s+/.test(l); })) {
+        return "<ul>" + lines.map(function (l) { return "<li>" + l.replace(/^\s*[-•]\s+/, "") + "</li>"; }).join("") + "</ul>";
+      }
+      return "<p>" + lines.join("<br>") + "</p>";
+    }).join("");
+    return html.replace(/\u0000(\d+)\u0000/g, function (_, i) { return stash[+i]; });
+  }
+  function mdInline(src) { var h = md(src); var m = h.match(/^<p>([\s\S]*)<\/p>$/); return m && m[1].indexOf("<p>") < 0 ? m[1] : h; }
+  function plain(src) { return String(src == null ? "" : src).replace(/\*\*|`/g, ""); }
+
+  var mathState = "idle";
+  var rawData = $("#quiz-data").textContent;
+  var USES_MATH = /\$[^$\n]+\$|\\\(|\\\[/.test(rawData);
+  function loadScript(url) {
+    return new Promise(function (resolve, reject) { var s = document.createElement("script"); s.src = url; s.onload = resolve; s.onerror = reject; document.head.appendChild(s); });
+  }
+  function typeset() {
+    if (!USES_MATH) return;
+    if (mathState === "ready") {
+      try {
+        window.renderMathInElement(app, { throwOnError: false, delimiters: [
+          { left: "$$", right: "$$", display: true }, { left: "\\[", right: "\\]", display: true },
+          { left: "$", right: "$", display: false }, { left: "\\(", right: "\\)", display: false }] });
+      } catch (e) { /* show raw TeX */ }
+      return;
+    }
+    if (mathState !== "idle") return;
+    mathState = "loading";
+    // Math rendering is optional: offline, the raw TeX stays readable.
+    var base = "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/";
+    var css = document.createElement("link"); css.rel = "stylesheet"; css.href = base + "katex.min.css"; document.head.appendChild(css);
+    loadScript(base + "katex.min.js").then(function () { return loadScript(base + "contrib/auto-render.min.js"); })
+      .then(function () { mathState = "ready"; typeset(); })
+      .catch(function () { mathState = "failed"; });
+  }
+
+  // ---------- data
+  var data;
+  try { data = JSON.parse(rawData); } catch (e) {
+    app.innerHTML = '<div class="card"><h2>This quiz file is damaged</h2><p>The quiz data could not be read: ' + esc(e.message) + "</p><p>Ask Claude to regenerate it.</p></div>";
+    return;
+  }
+  var questions = (data.questions || []).map(function (q, i) { var c = {}; for (var k in q) c[k] = q[k]; c.id = q.id || "q" + (i + 1); return c; });
+  var byId = {}; questions.forEach(function (q) { byId[q.id] = q; });
+  var KEY = "swc-quiz-" + (data.id || data.title || "untitled");
+  document.title = (data.title || "Practice quiz");
+  $("#title").textContent = data.title || "Practice quiz";
+  $("#subtitle").textContent = [data.course, questions.length + " questions"].filter(Boolean).join(" · ");
+
+  function topicName(id) {
+    if (!id) return "General";
+    if (data.topics && data.topics[id]) return data.topics[id];
+    return String(id).replace(/[-_]+/g, " ").replace(/^\w/, function (c) { return c.toUpperCase(); });
+  }
+  function localIso(d) {
+    d = d || new Date();
+    var p = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+  }
+  function shuffled(list) { var a = list.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+  // ---------- state
+  function freshState() {
+    var ids = questions.map(function (q) { return q.id; });
+    return { started: false, finished: false, order: data.shuffle ? shuffled(ids) : ids, pos: 0, answers: {}, first: {}, pass: 1, startedAt: null, finishedAt: null };
+  }
+  var state = store.get(KEY, null);
+  if (!state || !Array.isArray(state.order) || state.order.some(function (id) { return !byId[id]; })) state = freshState();
+  function save() { store.set(KEY, state); }
+
+  // ---------- grading
+  function norm(s) {
+    return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+      .replace(/\s+/g, " ").replace(/^[\s"'“”‘’.,;:!?()]+|[\s"'“”‘’.,;:!?()]+$/g, "").trim();
+  }
+  function accepted(q) { return (Array.isArray(q.answer) ? q.answer : [q.answer]).map(String); }
+  function answerText(q) {
+    if (q.type === "mcq") return q.options ? plain(q.options[q.answer]) : String(q.answer);
+    if (q.type === "tf") return q.answer ? "True" : "False";
+    if (q.type === "fill") return accepted(q)[0];
+    return plain(q.modelAnswer || "");
+  }
+  function isOpen(q) { return q.type === "short" || q.type === "significance"; }
+  function grade(q, response) {
+    if (q.type === "mcq") return response === q.answer;
+    if (q.type === "tf") return response === q.answer;
+    if (q.type === "fill") { var r = norm(response); return accepted(q).some(function (a) { return norm(a) === r; }); }
+    return null; // open questions are self-graded
+  }
+  function record(q, response, correct) {
+    state.answers[q.id] = { response: response, correct: correct };
+    if (!(q.id in state.first)) state.first[q.id] = correct;
+    save();
+  }
+
+  // ---------- screens
+  function setProgress() {
+    var total = state.order.length || 1;
+    var done = state.finished ? total : state.order.filter(function (id) { return state.answers[id] && state.answers[id].correct !== undefined; }).length;
+    $("#progress-fill").style.width = Math.round(100 * done / total) + "%";
+  }
+
+  function render() {
+    setProgress();
+    if (!questions.length) { app.innerHTML = '<div class="card"><h2>No questions yet</h2><p>This quiz has no questions.</p></div>'; return; }
+    if (state.finished) renderResults();
+    else if (!state.started) renderStart();
+    else renderQuestion();
+    typeset();
+  }
+
+  function renderStart() {
+    var topics = {};
+    questions.forEach(function (q) { topics[topicName(q.topic)] = true; });
+    var resumable = Object.keys(state.answers).length > 0;
+    app.innerHTML =
+      '<div class="card"><h2>' + esc(data.title || "Practice quiz") + "</h2>" +
+      (data.instructions ? md(data.instructions) : "") +
+      '<p class="small">' + questions.length + " questions · Topics: " + esc(Object.keys(topics).join(", ")) + "</p>" +
+      '<div class="actions"><button class="btn" id="go" type="button">' + (resumable ? "Resume" : "Start quiz") + "</button>" +
+      (resumable ? '<button class="btn secondary" id="restart" type="button">Start over</button>' : "") + "</div></div>";
+    $("#go").addEventListener("click", function () { state.started = true; state.startedAt = state.startedAt || localIso(); save(); render(); });
+    if (resumable) $("#restart").addEventListener("click", function () { state = freshState(); state.started = true; state.startedAt = localIso(); save(); render(); });
+    $("#go").focus();
+  }
+
+  function renderQuestion() {
+    var q = byId[state.order[state.pos]];
+    var a = state.answers[q.id];
+    var checked = a && a.correct !== undefined;
+    var dots = q.difficulty ? '<span class="chip" title="Difficulty">' + "●".repeat(q.difficulty) + "○".repeat(Math.max(0, 4 - q.difficulty)) + "</span>" : "";
+    var html = '<div class="card"><div class="meta"><span>Question ' + (state.pos + 1) + " of " + state.order.length +
+      (state.pass > 1 ? " · retry" : "") + '</span><span class="chip">' + esc(topicName(q.topic)) + "</span>" + dots + "</div>" +
+      '<div class="prompt" id="prompt">' + md(q.prompt) + "</div>";
+
+    if (q.type === "mcq" || q.type === "tf") {
+      var opts = q.type === "tf" ? [true, false] : q.options.map(function (_, i) { return i; });
+      html += '<ul class="options" role="radiogroup" aria-labelledby="prompt">';
+      opts.forEach(function (value, i) {
+        var label = q.type === "tf" ? (value ? "True" : "False") : q.options[i];
+        var cls = "opt";
+        if (checked) { if (value === q.answer) cls += " correct"; else if (a.response === value) cls += " wrong"; }
+        html += '<li><button type="button" class="' + cls + '" role="radio" data-i="' + i + '" aria-checked="' + (a && a.response === value ? "true" : "false") + '"' +
+          (checked ? " disabled" : "") + '><span class="key">' + (q.type === "tf" ? (value ? "T" : "F") : String.fromCharCode(65 + i)) + "</span><span>" + mdInline(label) + "</span></button></li>";
+      });
+      html += "</ul>";
+    } else if (q.type === "fill") {
+      html += '<label class="sr" for="fill">Your answer</label><input type="text" id="fill" autocomplete="off" placeholder="Type your answer" value="' + esc(a ? a.response : "") + '"' + (checked ? " disabled" : "") + ">";
+    } else {
+      html += '<label class="sr" for="open">Your answer</label><textarea id="open" placeholder="Write your answer in your own words"' + (a && a.revealed ? " disabled" : "") + ">" + esc(a ? a.response : "") + "</textarea>";
+    }
+
+    if (q.hint && !checked) html += '<div id="hint-box"></div>';
+    html += '<div id="feedback" aria-live="polite"></div><div class="actions" id="actions"></div></div>';
+    app.innerHTML = html;
+
+    var selected = a ? a.response : undefined;
+    var actions = $("#actions");
+    function button(label, cls, fn, disabled) {
+      var b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = label; b.disabled = !!disabled;
+      b.addEventListener("click", fn); actions.appendChild(b); return b;
+    }
+
+    if (q.type === "mcq" || q.type === "tf") {
+      app.querySelectorAll(".opt").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var i = +btn.getAttribute("data-i");
+          selected = q.type === "tf" ? i === 0 : i;
+          app.querySelectorAll(".opt").forEach(function (o) { o.setAttribute("aria-checked", o === btn ? "true" : "false"); });
+          if (checkBtn) checkBtn.disabled = false;
+        });
+      });
+    }
+
+    var checkBtn = null;
+    if (!checked) {
+      if (isOpen(q)) {
+        if (a && a.revealed) showModel(q);
+        else checkBtn = button("Show model answer", "btn", function () {
+          var text = $("#open").value.trim();
+          state.answers[q.id] = { response: text, revealed: true }; save(); renderQuestion(); typeset();
+        });
+      } else {
+        checkBtn = button("Check answer", "btn", function () {
+          var response = q.type === "fill" ? $("#fill").value.trim() : selected;
+          if (response === undefined || response === "") return;
+          record(q, response, grade(q, response)); renderQuestion(); typeset(); setProgress();
+        }, q.type !== "fill" && selected === undefined);
+        if (q.type === "fill") {
+          $("#fill").addEventListener("keydown", function (e) { if (e.key === "Enter") checkBtn.click(); });
+          $("#fill").focus();
+        }
+      }
+      if (q.hint && !(a && a.revealed)) {
+        button("Hint", "btn secondary", function (e) {
+          $("#hint-box").innerHTML = '<div class="hint">💡 ' + md(q.hint) + "</div>"; e.target.remove(); typeset();
+        });
+      }
+    } else {
+      showFeedback(q, a);
+    }
+
+    if (state.pos > 0) button("Back", "btn secondary", function () { state.pos--; save(); render(); });
+    if (checked) {
+      var last = state.pos === state.order.length - 1;
+      var next = button(last ? "See results" : "Next question", "btn", function () {
+        if (last) { state.finished = true; state.finishedAt = localIso(); } else state.pos++;
+        save(); render(); app.focus();
+      });
+      next.focus();
+    }
+
+    function showModel(q) {
+      var box = document.createElement("div"); box.className = "model";
+      box.innerHTML = "<strong>Model answer</strong>" + md(q.modelAnswer || "") +
+        (q.keyPoints && q.keyPoints.length ? '<strong>A full answer includes:</strong><ul>' + q.keyPoints.map(function (k) { return "<li>" + mdInline(k) + "</li>"; }).join("") + "</ul>" : "") +
+        '<p class="small" style="margin-top:10px">Compare honestly with what you wrote, then mark yourself.</p>';
+      $("#feedback").appendChild(box);
+      [["Got it", true], ["Partly", "partial"], ["Missed it", false]].forEach(function (pair) {
+        button(pair[0], pair[1] === true ? "btn" : "btn secondary", function () {
+          record(q, state.answers[q.id].response, pair[1]); state.answers[q.id].revealed = true; save(); renderQuestion(); typeset(); setProgress();
+        });
+      });
+    }
+  }
+
+  function showFeedback(q, a) {
+    var cls = a.correct === true ? "good" : a.correct === "partial" ? "partial" : "bad";
+    var verdict = a.correct === true ? "✓ Correct" : a.correct === "partial" ? "◐ Partly right" : "✗ Not quite";
+    var html = '<div class="feedback ' + cls + '"><strong class="verdict">' + verdict + "</strong>";
+    if (a.correct !== true && !isOpen(q)) html += "<p>Answer: <strong>" + esc(answerText(q)) + "</strong></p>";
+    if (isOpen(q)) {
+      html += "<p><strong>Model answer:</strong></p>" + md(q.modelAnswer || "");
+      if (q.keyPoints && q.keyPoints.length) html += '<ul>' + q.keyPoints.map(function (k) { return "<li>" + mdInline(k) + "</li>"; }).join("") + "</ul>";
+    }
+    if (q.explanation) html += md(q.explanation);
+    if (q.source) html += '<span class="source">Source: ' + esc(q.source) + "</span>";
+    $("#feedback").innerHTML = html + "</div>";
+  }
+
+  function scoreOf(ids, from) {
+    var c = 0, p = 0;
+    ids.forEach(function (id) { var r = from[id]; if (r === true) c++; else if (r === "partial") p++; });
+    return { correct: c, partial: p, total: ids.length, points: c + p / 2, percent: ids.length ? Math.round(100 * (c + p / 2) / ids.length) : 0 };
+  }
+
+  function renderResults() {
+    var ids = questions.map(function (q) { return q.id; });
+    var first = scoreOf(ids, state.first);
+    var latest = {}; ids.forEach(function (id) { latest[id] = state.answers[id] ? state.answers[id].correct : undefined; });
+    var topics = {};
+    questions.forEach(function (q) {
+      var t = topicName(q.topic); topics[t] = topics[t] || { ids: [] }; topics[t].ids.push(q.id);
+    });
+    var missed = questions.filter(function (q) { return latest[q.id] !== true; });
+
+    var html = '<div class="card"><h2>Results</h2><div class="score">' + first.percent + '%</div><p class="small">' +
+      first.correct + " correct" + (first.partial ? ", " + first.partial + " partly right" : "") + " out of " + first.total + " on the first try" +
+      (state.pass > 1 ? " · after retries: " + scoreOf(ids, latest).percent + "%" : "") + "</p>" +
+      '<table><thead><tr><th>Topic</th><th>Score</th><th style="width:40%">First try</th></tr></thead><tbody>';
+    Object.keys(topics).forEach(function (t) {
+      var s = scoreOf(topics[t].ids, state.first);
+      html += "<tr><td>" + esc(t) + "</td><td>" + s.points + "/" + s.total + '</td><td><div class="meter" role="img" aria-label="' + s.percent + ' percent"><span style="width:' + s.percent + '%"></span></div></td></tr>';
+    });
+    html += "</tbody></table>" +
+      '<div class="actions">' +
+      (missed.length ? '<button class="btn" id="retry" type="button">Retry ' + missed.length + " missed</button>" : "") +
+      '<button class="btn secondary" id="copy" type="button">Copy results for Claude</button>' +
+      '<button class="btn secondary" id="download" type="button">Download results</button>' +
+      '<button class="btn secondary" id="again" type="button">Start over</button></div>' +
+      '<p class="small" style="margin-top:12px">Paste your results back to Claude so it can log them, update your error log and build the next round on what you missed.</p></div>';
+
+    if (missed.length) {
+      html += '<div class="card"><h2>Review what you missed</h2>';
+      missed.forEach(function (q) {
+        var a = state.answers[q.id] || {};
+        var yours = a.response === undefined || a.response === null || a.response === "" ? "(no answer)" :
+          q.type === "mcq" ? plain(q.options[a.response]) : q.type === "tf" ? (a.response ? "True" : "False") : String(a.response);
+        html += '<div class="missed"><div class="meta"><span class="chip">' + esc(topicName(q.topic)) + "</span></div>" + md(q.prompt) +
+          '<p class="small">Your answer: ' + esc(yours) + "</p><p><strong>" + (isOpen(q) ? "Model answer" : "Answer") + ":</strong> " + esc(answerText(q)) + "</p>" +
+          (q.explanation ? md(q.explanation) : "") + (q.source ? '<span class="source">Source: ' + esc(q.source) + "</span>" : "") + "</div>";
+      });
+      html += "</div>";
+    }
+    app.innerHTML = html;
+
+    if (missed.length) $("#retry").addEventListener("click", function () {
+      state.order = missed.map(function (q) { return q.id; });
+      state.order.forEach(function (id) { delete state.answers[id]; });
+      state.pos = 0; state.pass++; state.finished = false; save(); render();
+    });
+    $("#copy").addEventListener("click", function () {
+      var text = "Here are my quiz results. Please log them and build the next round on what I missed.\n\n```json\n" + JSON.stringify(payload(), null, 2) + "\n```";
+      copy(text);
+    });
+    $("#download").addEventListener("click", function () {
+      var blob = new Blob([JSON.stringify(payload(), null, 2)], { type: "application/json" });
+      var link = document.createElement("a"); link.href = URL.createObjectURL(blob);
+      link.download = (data.id || "quiz") + "-results.json"; document.body.appendChild(link); link.click();
+      setTimeout(function () { URL.revokeObjectURL(link.href); link.remove(); }, 500);
+    });
+    $("#again").addEventListener("click", function () { store.remove(KEY); state = freshState(); render(); });
+  }
+
+  function payload() {
+    var ids = questions.map(function (q) { return q.id; });
+    return {
+      quiz: data.id || null, title: data.title || null, course: data.course || null,
+      started: state.startedAt, finished: state.finishedAt || localIso(),
+      score: scoreOf(ids, state.first),
+      answers: questions.map(function (q) {
+        var a = state.answers[q.id] || {};
+        var response = a.response;
+        if (q.type === "mcq" && typeof response === "number") response = plain(q.options[response]);
+        return { id: q.id, topic: q.topic || null, type: q.type, difficulty: q.difficulty || null, prompt: plain(q.prompt),
+                 response: response === undefined ? null : response, correct: q.id in state.first ? state.first[q.id] : null,
+                 afterRetry: a.correct === undefined ? null : a.correct, answer: answerText(q), source: q.source || null };
+      })
+    };
+  }
+
+  function toast(msg) { var t = $("#toast"); t.textContent = msg; t.classList.add("show"); setTimeout(function () { t.classList.remove("show"); }, 2200); }
+  function copy(text) {
+    function fallback() {
+      var area = document.createElement("textarea"); area.value = text; area.style.position = "fixed"; area.style.opacity = "0";
+      document.body.appendChild(area); area.select();
+      var ok = false; try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      area.remove(); toast(ok ? "Copied. Paste it into your chat with Claude." : "Couldn't copy. Use Download results instead.");
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(function () { toast("Copied. Paste it into your chat with Claude."); }, fallback);
+    else fallback();
+  }
+
+  // Keyboard: 1-4 or A-D pick an option, T/F for true-false, Enter checks or moves on.
+  document.addEventListener("keydown", function (e) {
+    if (!state.started || state.finished || e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT" || e.metaKey || e.ctrlKey || e.altKey) return;
+    var opts = app.querySelectorAll(".opt:not([disabled])");
+    var key = e.key.toLowerCase(), index = -1;
+    if (/^[1-9]$/.test(key)) index = +key - 1;
+    else if (/^[a-i]$/.test(key) && opts.length > 2) index = key.charCodeAt(0) - 97;
+    else if (opts.length === 2 && (key === "t" || key === "f")) index = key === "t" ? 0 : 1;
+    if (index >= 0 && opts[index]) { opts[index].click(); opts[index].focus(); e.preventDefault(); }
+    else if (key === "enter") {
+      // Enter on a chosen option checks the answer instead of re-selecting it.
+      var primary = app.querySelector("#actions .btn:not(.secondary):not([disabled])"), active = document.activeElement;
+      if (primary && (!active || active.tagName !== "BUTTON" || active.classList.contains("opt"))) { primary.click(); e.preventDefault(); }
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

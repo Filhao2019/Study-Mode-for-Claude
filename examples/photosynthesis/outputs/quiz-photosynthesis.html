@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practice Quiz</title>
+<!--
+  Studying with Claude: practice quiz template.
+  To use: replace the JSON in the application/json script block whose id is "quiz-data" (near the end of the file) with your quiz. Everything else stays as is.
+  Question types: mcq, tf, fill, short, significance. See the quiz skill for the full format.
+  Inside the JSON, write "<\/" instead of "</" and escape backslashes in LaTeX ("\\frac").
+-->
+<style>
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --surface-2: #efede7; --text: #1c1b19; --muted: #5d5b55;
+    --border: #d9d6ce; --accent: #3550c8; --accent-text: #ffffff; --accent-soft: #e6eafb;
+    --good: #22753a; --good-bg: #e3f3e7; --bad: #b42323; --bad-bg: #fbe9e9; --warn: #8a5600; --warn-bg: #fff1d9;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413; --surface: #1d1d1b; --surface-2: #282825; --text: #ecebe6; --muted: #a9a79f;
+      --border: #3a3935; --accent: #91a3ff; --accent-text: #10131f; --accent-soft: #252b45;
+      --good: #6fd389; --good-bg: #1a3122; --bad: #ff8a8a; --bad-bg: #3a1d1d; --warn: #ffc470; --warn-bg: #39291a;
+      --shadow: none; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141413; --surface: #1d1d1b; --surface-2: #282825; --text: #ecebe6; --muted: #a9a79f;
+    --border: #3a3935; --accent: #91a3ff; --accent-text: #10131f; --accent-soft: #252b45;
+    --good: #6fd389; --good-bg: #1a3122; --bad: #ff8a8a; --bad-bg: #3a1d1d; --warn: #ffc470; --warn-bg: #39291a;
+    --shadow: none; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+         padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .logo { font-size: 22px; }
+  .title { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  .progress { height: 4px; background: var(--surface-2); }
+  #progress-fill { height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+  main { max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; outline: none; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  h1, h2, h3 { line-height: 1.25; margin: 0 0 12px; }
+  h2 { font-size: 1.3rem; }
+  p { margin: 0 0 10px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .chip { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 12.5px; }
+  .prompt { font-size: 1.08rem; margin-bottom: 16px; }
+  .prompt p:last-child { margin-bottom: 0; }
+  .options { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; padding: 12px 14px; border-radius: 10px;
+         border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+  .opt:hover:not([disabled]) { border-color: var(--accent); }
+  .opt[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .opt.correct { border-color: var(--good); background: var(--good-bg); }
+  .opt.wrong { border-color: var(--bad); background: var(--bad-bg); }
+  .opt[disabled] { cursor: default; }
+  .opt .key { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 650; font-size: 13px;
+              background: var(--surface-2); color: var(--muted); }
+  .opt p { margin: 0; }
+  input[type=text], textarea { width: 100%; font: inherit; color: var(--text); background: var(--surface); border: 1.5px solid var(--border);
+              border-radius: 10px; padding: 11px 13px; }
+  textarea { min-height: 130px; resize: vertical; }
+  input[type=text]:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  button { font: inherit; }
+  .btn { border: 0; border-radius: 10px; padding: 11px 18px; background: var(--accent); color: var(--accent-text); font-weight: 600; cursor: pointer; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .btn.secondary { background: var(--surface-2); color: var(--text); }
+  .ghost { border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 10px; padding: 7px 11px; cursor: pointer; }
+  .feedback { margin-top: 16px; padding: 14px 16px; border-radius: 10px; border-left: 4px solid var(--border); background: var(--surface-2); }
+  .feedback.good { border-color: var(--good); background: var(--good-bg); }
+  .feedback.bad { border-color: var(--bad); background: var(--bad-bg); }
+  .feedback.partial { border-color: var(--warn); background: var(--warn-bg); }
+  .feedback strong.verdict { display: block; margin-bottom: 4px; }
+  .source { display: block; margin-top: 8px; color: var(--muted); font-size: 13.5px; }
+  .hint { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--accent-soft); }
+  .model { margin-top: 14px; padding: 14px 16px; border-radius: 10px; background: var(--surface-2); }
+  .model ul { margin: 6px 0 0; padding-left: 20px; }
+  .score { font-size: 2.6rem; font-weight: 700; line-height: 1; margin: 6px 0 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .meter { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; min-width: 60px; }
+  .meter > span { display: block; height: 100%; background: var(--accent); }
+  .missed { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px; }
+  .missed:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+  .small { font-size: 13.5px; color: var(--muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  pre { background: var(--surface-2); padding: 12px; border-radius: 10px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  .foot { text-align: center; color: var(--muted); font-size: 12.5px; padding: 0 16px 24px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px;
+           border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (max-width: 520px) { .card { padding: 16px; } .btn { flex: 1 1 auto; } .score { font-size: 2.2rem; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">📚</span>
+    <div style="min-width:0"><div id="title" class="title">Practice quiz</div><div id="subtitle" class="subtitle"></div></div>
+  </div>
+  <button id="theme" class="ghost" type="button" aria-label="Switch between light and dark mode">◐</button>
+</header>
+<div class="progress" aria-hidden="true"><div id="progress-fill"></div></div>
+<main id="app" tabindex="-1"></main>
+<p class="foot">Studying with Claude · AI can make mistakes. Check answers against your own materials.</p>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script type="application/json" id="quiz-data">
+{
+  "id": "bio-101-q-20261023-2",
+  "title": "Photosynthesis: full practice quiz",
+  "course": "Biology 101",
+  "instructions": "18 questions on the week 5 handout. Answer, check, and read each explanation before moving on. At the end, tap **Copy results for Claude** and paste them back into the chat.",
+  "shuffle": false,
+  "topics": {
+    "overview": "Overview and equation",
+    "chloroplast-structure": "Chloroplast structure",
+    "light-reactions": "Light-dependent reactions",
+    "calvin-cycle": "Calvin cycle",
+    "limiting-factors": "Limiting factors"
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "topic": "overview",
+      "difficulty": 1,
+      "prompt": "Which organisms carry out photosynthesis?",
+      "options": [
+        "Plants only",
+        "Plants, algae and cyanobacteria",
+        "Plants and fungi",
+        "All bacteria"
+      ],
+      "answer": 1,
+      "explanation": "The handout names plants, algae and cyanobacteria as the organisms that turn light energy into chemical energy.",
+      "source": "[S1 ¶1]"
+    },
+    {
+      "id": "q2",
+      "type": "fill",
+      "topic": "overview",
+      "difficulty": 1,
+      "prompt": "Organisms that make their own food from inorganic molecules are called ________.",
+      "answer": [
+        "autotrophs",
+        "autotroph",
+        "producers",
+        "producer"
+      ],
+      "explanation": "Autotrophs, also called producers, make their own food, which is why almost every food chain starts with them.",
+      "source": "[S1 ¶1]"
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "topic": "overview",
+      "difficulty": 1,
+      "prompt": "What are the products of the overall photosynthesis reaction?",
+      "options": [
+        "Carbon dioxide and water",
+        "Glucose and oxygen",
+        "Glucose and carbon dioxide",
+        "Oxygen and water"
+      ],
+      "answer": 1,
+      "explanation": "$6\\,\\mathrm{CO_2} + 6\\,\\mathrm{H_2O} \\rightarrow \\mathrm{C_6H_{12}O_6} + 6\\,\\mathrm{O_2}$: carbon dioxide and water go in, glucose and oxygen come out.",
+      "source": "[S1 ¶2]"
+    },
+    {
+      "id": "q4",
+      "type": "tf",
+      "topic": "chloroplast-structure",
+      "difficulty": 1,
+      "prompt": "Carbon dioxide enters the leaf through the xylem.",
+      "answer": false,
+      "explanation": "Carbon dioxide enters through the **stomata**. The xylem brings water from the roots.",
+      "source": "[S1 ¶3]"
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "topic": "chloroplast-structure",
+      "difficulty": 2,
+      "prompt": "Why do leaves look green?",
+      "options": [
+        "Chlorophyll absorbs green light",
+        "Chlorophyll reflects green light and absorbs mainly red and blue",
+        "The stroma is green",
+        "Stomata reflect green light"
+      ],
+      "answer": 1,
+      "hint": "We see the colors a pigment does *not* absorb.",
+      "explanation": "Chlorophyll absorbs mainly red and blue light and reflects green, so green light reaches our eyes.",
+      "source": "[S1 ¶4]"
+    },
+    {
+      "id": "q6",
+      "type": "fill",
+      "topic": "chloroplast-structure",
+      "difficulty": 1,
+      "prompt": "Stacks of thylakoids are called ________.",
+      "answer": [
+        "grana",
+        "granum"
+      ],
+      "explanation": "Thylakoids are stacked into piles called grana (one stack is a granum).",
+      "source": "[S1 ¶3]"
+    },
+    {
+      "id": "q7",
+      "type": "mcq",
+      "topic": "light-reactions",
+      "difficulty": 2,
+      "prompt": "In the light-dependent reactions, what is the energy released by electrons moving along the electron transport chain used for?",
+      "options": [
+        "Splitting carbon dioxide",
+        "Pumping protons (H⁺) into the thylakoid space",
+        "Attaching CO₂ to RuBP",
+        "Making glucose directly"
+      ],
+      "answer": 1,
+      "explanation": "The energy pumps protons into the thylakoid space, building the gradient that ATP synthase uses.",
+      "source": "[S1 ¶5]"
+    },
+    {
+      "id": "q8",
+      "type": "tf",
+      "topic": "light-reactions",
+      "difficulty": 2,
+      "prompt": "The oxygen released by photosynthesis comes from carbon dioxide.",
+      "answer": false,
+      "explanation": "It comes from **water**, split during photolysis. Experiments labelling water with a heavy oxygen isotope found the label in the released O₂.",
+      "source": "[S1 ¶6]"
+    },
+    {
+      "id": "q9",
+      "type": "fill",
+      "topic": "light-reactions",
+      "difficulty": 2,
+      "prompt": "At the end of the electron transport chain, electrons reduce NADP⁺ to ________.",
+      "answer": [
+        "NADPH"
+      ],
+      "explanation": "NADPH carries those electrons to the Calvin cycle.",
+      "source": "[S1 ¶5]"
+    },
+    {
+      "id": "q10",
+      "type": "short",
+      "topic": "light-reactions",
+      "difficulty": 3,
+      "prompt": "Describe how light energy ends up stored in ATP and NADPH.",
+      "modelAnswer": "Light excites electrons in chlorophyll in the photosystems. The electrons pass along an electron transport chain, and the energy released pumps protons into the thylakoid space. Protons flowing back out through ATP synthase drive the making of ATP. At the end of the chain the electrons reduce NADP⁺ to NADPH.",
+      "keyPoints": [
+        "Light excites electrons in chlorophyll",
+        "Electron transport chain pumps H⁺ into the thylakoid space",
+        "H⁺ flowing back through ATP synthase makes ATP",
+        "Electrons finally reduce NADP⁺ to NADPH"
+      ],
+      "explanation": "Protons, not electrons, flow through ATP synthase. That's the most common slip on this question.",
+      "source": "[S1 ¶5]"
+    },
+    {
+      "id": "q11",
+      "type": "mcq",
+      "topic": "calvin-cycle",
+      "difficulty": 2,
+      "prompt": "In the reduction phase of the Calvin cycle, what does NADPH do?",
+      "options": [
+        "Supplies the energy",
+        "Supplies the electrons",
+        "Fixes carbon dioxide",
+        "Regenerates RuBP"
+      ],
+      "answer": 1,
+      "hint": "ATP and NADPH have different jobs here.",
+      "explanation": "NADPH supplies the electrons and ATP supplies the energy to turn 3-PGA into G3P.",
+      "source": "[S1 ¶8]"
+    },
+    {
+      "id": "q12",
+      "type": "fill",
+      "topic": "calvin-cycle",
+      "difficulty": 1,
+      "prompt": "Carbon fixation produces an unstable six-carbon molecule that splits into two three-carbon molecules of ________.",
+      "answer": [
+        "3-PGA",
+        "PGA",
+        "3-phosphoglycerate",
+        "3 PGA"
+      ],
+      "explanation": "Rubisco attaches CO₂ to RuBP; the six-carbon product splits into two 3-PGA.",
+      "source": "[S1 ¶7]"
+    },
+    {
+      "id": "q13",
+      "type": "mcq",
+      "topic": "calvin-cycle",
+      "difficulty": 3,
+      "prompt": "How many turns of the Calvin cycle are needed to make one glucose molecule?",
+      "options": [
+        "2",
+        "3",
+        "6",
+        "12"
+      ],
+      "answer": 2,
+      "hint": "One G3P leaves for every 3 CO₂ fixed, and glucose needs 2 G3P.",
+      "explanation": "Each turn fixes one CO₂. One G3P leaves per 3 CO₂, glucose needs 2 G3P, so 6 CO₂: six turns.",
+      "source": "[S1 ¶8]"
+    },
+    {
+      "id": "q14",
+      "type": "tf",
+      "topic": "calvin-cycle",
+      "difficulty": 2,
+      "prompt": "Most of the G3P made in the Calvin cycle is used to regenerate RuBP.",
+      "answer": true,
+      "explanation": "Most G3P (with more ATP) rebuilds RuBP; only one G3P per three CO₂ leaves the cycle.",
+      "source": "[S1 ¶8]"
+    },
+    {
+      "id": "q15",
+      "type": "significance",
+      "topic": "calvin-cycle",
+      "difficulty": 3,
+      "prompt": "Explain the significance of the enzyme **Rubisco**.",
+      "modelAnswer": "Rubisco carries out carbon fixation, attaching CO₂ to RuBP. This is the step where carbon from the air enters the Calvin cycle and ends up in G3P, from which plants build glucose, sucrose, starch and other organic molecules. Because it's an enzyme, it's also why temperature affects the rate of photosynthesis.",
+      "keyPoints": [
+        "Catalyzes carbon fixation: CO₂ + RuBP",
+        "Entry point of CO₂ into the Calvin cycle",
+        "Leads to G3P and the plant's organic molecules",
+        "As an enzyme, links temperature to the rate"
+      ],
+      "explanation": "\"Explain the significance\" wants the role *and* why it matters more widely.",
+      "source": "[S1 ¶7-¶9]"
+    },
+    {
+      "id": "q16",
+      "type": "mcq",
+      "topic": "limiting-factors",
+      "difficulty": 2,
+      "prompt": "A plant is in bright light at a warm temperature, but the CO₂ concentration is very low. What happens if the light gets even brighter?",
+      "options": [
+        "The rate rises sharply",
+        "The rate stays about the same, because CO₂ is limiting",
+        "The rate falls because enzymes denature",
+        "Photosynthesis stops"
+      ],
+      "answer": 1,
+      "explanation": "The factor in shortest supply (here CO₂) limits the rate; raising the others won't help until it's increased.",
+      "source": "[S1 ¶9]"
+    },
+    {
+      "id": "q17",
+      "type": "short",
+      "topic": "limiting-factors",
+      "difficulty": 3,
+      "prompt": "Explain why the rate of photosynthesis falls at high temperatures.",
+      "modelAnswer": "The Calvin cycle depends on enzymes such as Rubisco. Up to an optimum, higher temperature speeds the reactions up, but beyond the optimum the enzymes start to denature, so the rate falls.",
+      "keyPoints": [
+        "The Calvin cycle relies on enzymes such as Rubisco",
+        "Rate rises up to an optimum temperature",
+        "Above the optimum, enzymes denature, so the rate falls"
+      ],
+      "source": "[S1 ¶9]"
+    },
+    {
+      "id": "q18",
+      "type": "short",
+      "topic": "calvin-cycle",
+      "difficulty": 4,
+      "prompt": "Compare the light-dependent reactions and the Calvin cycle by location, inputs and outputs, and explain why the Calvin cycle stops in the dark.",
+      "modelAnswer": "Light-dependent reactions: in the thylakoid membranes; use light and water (and NADP⁺); produce ATP, NADPH and O₂. Calvin cycle: in the stroma; uses CO₂, ATP and NADPH; produces G3P. The Calvin cycle doesn't use light directly, but in the dark the light-dependent reactions stop making ATP and NADPH, so it soon runs out and stops.",
+      "keyPoints": [
+        "Locations: thylakoid membranes vs stroma",
+        "Inputs: light and water vs CO₂, ATP and NADPH",
+        "Outputs: ATP, NADPH and O₂ vs G3P",
+        "Dark: no new ATP and NADPH, so the Calvin cycle stops"
+      ],
+      "explanation": "Your lecturer flagged this comparison as an exam essential.",
+      "source": "[S1 ¶5-¶8, ¶11]"
+    }
+  ]
+}
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (sel, el) { return (el || document).querySelector(sel); };
+  var app = $("#app");
+
+  // Storage can be unavailable (private windows, blocked cookies, file previews): never let it break the quiz.
+  var store = {
+    get: function (key, fallback) { try { var v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; } },
+    set: function (key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* keep going without saving */ } },
+    remove: function (key) { try { localStorage.removeItem(key); } catch (e) { /* ignore */ } }
+  };
+
+  // ---------- theme
+  var root = document.documentElement;
+  function applyTheme(t) { if (t === "light" || t === "dark") root.setAttribute("data-theme", t); else root.removeAttribute("data-theme"); }
+  applyTheme(store.get("swc-theme", null));
+  $("#theme").addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") ? root.getAttribute("data-theme") === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    applyTheme(dark ? "light" : "dark");
+    store.set("swc-theme", dark ? "light" : "dark");
+  });
+
+  // ---------- text rendering (small, safe Markdown subset + optional KaTeX)
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function md(src) {
+    var stash = [];
+    function keep(html) { return "\u0000" + (stash.push(html) - 1) + "\u0000"; }
+    var s = String(src == null ? "" : src);
+    s = s.replace(/```[\w-]*\n?([\s\S]*?)```/g, function (_, code) { return keep("<pre><code>" + esc(code.replace(/\n$/, "")) + "</code></pre>"); });
+    s = s.replace(/\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$/g, function (m) { return keep(esc(m)); });
+    s = s.replace(/`([^`\n]+)`/g, function (_, c) { return keep("<code>" + esc(c) + "</code>"); });
+    s = esc(s).replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    var html = s.split(/\n{2,}/).map(function (block) {
+      var lines = block.split("\n");
+      if (/^\u0000\d+\u0000$/.test(block.trim())) return block;
+      if (lines.every(function (l) { return /^\s*[-•]\s+/.test(l); })) {
+        return "<ul>" + lines.map(function (l) { return "<li>" + l.replace(/^\s*[-•]\s+/, "") + "</li>"; }).join("") + "</ul>";
+      }
+      return "<p>" + lines.join("<br>") + "</p>";
+    }).join("");
+    return html.replace(/\u0000(\d+)\u0000/g, function (_, i) { return stash[+i]; });
+  }
+  function mdInline(src) { var h = md(src); var m = h.match(/^<p>([\s\S]*)<\/p>$/); return m && m[1].indexOf("<p>") < 0 ? m[1] : h; }
+  function plain(src) { return String(src == null ? "" : src).replace(/\*\*|`/g, ""); }
+
+  var mathState = "idle";
+  var rawData = $("#quiz-data").textContent;
+  var USES_MATH = /\$[^$\n]+\$|\\\(|\\\[/.test(rawData);
+  function loadScript(url) {
+    return new Promise(function (resolve, reject) { var s = document.createElement("script"); s.src = url; s.onload = resolve; s.onerror = reject; document.head.appendChild(s); });
+  }
+  function typeset() {
+    if (!USES_MATH) return;
+    if (mathState === "ready") {
+      try {
+        window.renderMathInElement(app, { throwOnError: false, delimiters: [
+          { left: "$$", right: "$$", display: true }, { left: "\\[", right: "\\]", display: true },
+          { left: "$", right: "$", display: false }, { left: "\\(", right: "\\)", display: false }] });
+      } catch (e) { /* show raw TeX */ }
+      return;
+    }
+    if (mathState !== "idle") return;
+    mathState = "loading";
+    // Math rendering is optional: offline, the raw TeX stays readable.
+    var base = "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/";
+    var css = document.createElement("link"); css.rel = "stylesheet"; css.href = base + "katex.min.css"; document.head.appendChild(css);
+    loadScript(base + "katex.min.js").then(function () { return loadScript(base + "contrib/auto-render.min.js"); })
+      .then(function () { mathState = "ready"; typeset(); })
+      .catch(function () { mathState = "failed"; });
+  }
+
+  // ---------- data
+  var data;
+  try { data = JSON.parse(rawData); } catch (e) {
+    app.innerHTML = '<div class="card"><h2>This quiz file is damaged</h2><p>The quiz data could not be read: ' + esc(e.message) + "</p><p>Ask Claude to regenerate it.</p></div>";
+    return;
+  }
+  var questions = (data.questions || []).map(function (q, i) { var c = {}; for (var k in q) c[k] = q[k]; c.id = q.id || "q" + (i + 1); return c; });
+  var byId = {}; questions.forEach(function (q) { byId[q.id] = q; });
+  var KEY = "swc-quiz-" + (data.id || data.title || "untitled");
+  document.title = (data.title || "Practice quiz");
+  $("#title").textContent = data.title || "Practice quiz";
+  $("#subtitle").textContent = [data.course, questions.length + " questions"].filter(Boolean).join(" · ");
+
+  function topicName(id) {
+    if (!id) return "General";
+    if (data.topics && data.topics[id]) return data.topics[id];
+    return String(id).replace(/[-_]+/g, " ").replace(/^\w/, function (c) { return c.toUpperCase(); });
+  }
+  function localIso(d) {
+    d = d || new Date();
+    var p = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+  }
+  function shuffled(list) { var a = list.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+  // ---------- state
+  function freshState() {
+    var ids = questions.map(function (q) { return q.id; });
+    return { started: false, finished: false, order: data.shuffle ? shuffled(ids) : ids, pos: 0, answers: {}, first: {}, pass: 1, startedAt: null, finishedAt: null };
+  }
+  var state = store.get(KEY, null);
+  if (!state || !Array.isArray(state.order) || state.order.some(function (id) { return !byId[id]; })) state = freshState();
+  function save() { store.set(KEY, state); }
+
+  // ---------- grading
+  function norm(s) {
+    return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+      .replace(/\s+/g, " ").replace(/^[\s"'“”‘’.,;:!?()]+|[\s"'“”‘’.,;:!?()]+$/g, "").trim();
+  }
+  function accepted(q) { return (Array.isArray(q.answer) ? q.answer : [q.answer]).map(String); }
+  function answerText(q) {
+    if (q.type === "mcq") return q.options ? plain(q.options[q.answer]) : String(q.answer);
+    if (q.type === "tf") return q.answer ? "True" : "False";
+    if (q.type === "fill") return accepted(q)[0];
+    return plain(q.modelAnswer || "");
+  }
+  function isOpen(q) { return q.type === "short" || q.type === "significance"; }
+  function grade(q, response) {
+    if (q.type === "mcq") return response === q.answer;
+    if (q.type === "tf") return response === q.answer;
+    if (q.type === "fill") { var r = norm(response); return accepted(q).some(function (a) { return norm(a) === r; }); }
+    return null; // open questions are self-graded
+  }
+  function record(q, response, correct) {
+    state.answers[q.id] = { response: response, correct: correct };
+    if (!(q.id in state.first)) state.first[q.id] = correct;
+    save();
+  }
+
+  // ---------- screens
+  function setProgress() {
+    var total = state.order.length || 1;
+    var done = state.finished ? total : state.order.filter(function (id) { return state.answers[id] && state.answers[id].correct !== undefined; }).length;
+    $("#progress-fill").style.width = Math.round(100 * done / total) + "%";
+  }
+
+  function render() {
+    setProgress();
+    if (!questions.length) { app.innerHTML = '<div class="card"><h2>No questions yet</h2><p>This quiz has no questions.</p></div>'; return; }
+    if (state.finished) renderResults();
+    else if (!state.started) renderStart();
+    else renderQuestion();
+    typeset();
+  }
+
+  function renderStart() {
+    var topics = {};
+    questions.forEach(function (q) { topics[topicName(q.topic)] = true; });
+    var resumable = Object.keys(state.answers).length > 0;
+    app.innerHTML =
+      '<div class="card"><h2>' + esc(data.title || "Practice quiz") + "</h2>" +
+      (data.instructions ? md(data.instructions) : "") +
+      '<p class="small">' + questions.length + " questions · Topics: " + esc(Object.keys(topics).join(", ")) + "</p>" +
+      '<div class="actions"><button class="btn" id="go" type="button">' + (resumable ? "Resume" : "Start quiz") + "</button>" +
+      (resumable ? '<button class="btn secondary" id="restart" type="button">Start over</button>' : "") + "</div></div>";
+    $("#go").addEventListener("click", function () { state.started = true; state.startedAt = state.startedAt || localIso(); save(); render(); });
+    if (resumable) $("#restart").addEventListener("click", function () { state = freshState(); state.started = true; state.startedAt = localIso(); save(); render(); });
+    $("#go").focus();
+  }
+
+  function renderQuestion() {
+    var q = byId[state.order[state.pos]];
+    var a = state.answers[q.id];
+    var checked = a && a.correct !== undefined;
+    var dots = q.difficulty ? '<span class="chip" title="Difficulty">' + "●".repeat(q.difficulty) + "○".repeat(Math.max(0, 4 - q.difficulty)) + "</span>" : "";
+    var html = '<div class="card"><div class="meta"><span>Question ' + (state.pos + 1) + " of " + state.order.length +
+      (state.pass > 1 ? " · retry" : "") + '</span><span class="chip">' + esc(topicName(q.topic)) + "</span>" + dots + "</div>" +
+      '<div class="prompt" id="prompt">' + md(q.prompt) + "</div>";
+
+    if (q.type === "mcq" || q.type === "tf") {
+      var opts = q.type === "tf" ? [true, false] : q.options.map(function (_, i) { return i; });
+      html += '<ul class="options" role="radiogroup" aria-labelledby="prompt">';
+      opts.forEach(function (value, i) {
+        var label = q.type === "tf" ? (value ? "True" : "False") : q.options[i];
+        var cls = "opt";
+        if (checked) { if (value === q.answer) cls += " correct"; else if (a.response === value) cls += " wrong"; }
+        html += '<li><button type="button" class="' + cls + '" role="radio" data-i="' + i + '" aria-checked="' + (a && a.response === value ? "true" : "false") + '"' +
+          (checked ? " disabled" : "") + '><span class="key">' + (q.type === "tf" ? (value ? "T" : "F") : String.fromCharCode(65 + i)) + "</span><span>" + mdInline(label) + "</span></button></li>";
+      });
+      html += "</ul>";
+    } else if (q.type === "fill") {
+      html += '<label class="sr" for="fill">Your answer</label><input type="text" id="fill" autocomplete="off" placeholder="Type your answer" value="' + esc(a ? a.response : "") + '"' + (checked ? " disabled" : "") + ">";
+    } else {
+      html += '<label class="sr" for="open">Your answer</label><textarea id="open" placeholder="Write your answer in your own words"' + (a && a.revealed ? " disabled" : "") + ">" + esc(a ? a.response : "") + "</textarea>";
+    }
+
+    if (q.hint && !checked) html += '<div id="hint-box"></div>';
+    html += '<div id="feedback" aria-live="polite"></div><div class="actions" id="actions"></div></div>';
+    app.innerHTML = html;
+
+    var selected = a ? a.response : undefined;
+    var actions = $("#actions");
+    function button(label, cls, fn, disabled) {
+      var b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = label; b.disabled = !!disabled;
+      b.addEventListener("click", fn); actions.appendChild(b); return b;
+    }
+
+    if (q.type === "mcq" || q.type === "tf") {
+      app.querySelectorAll(".opt").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var i = +btn.getAttribute("data-i");
+          selected = q.type === "tf" ? i === 0 : i;
+          app.querySelectorAll(".opt").forEach(function (o) { o.setAttribute("aria-checked", o === btn ? "true" : "false"); });
+          if (checkBtn) checkBtn.disabled = false;
+        });
+      });
+    }
+
+    var checkBtn = null;
+    if (!checked) {
+      if (isOpen(q)) {
+        if (a && a.revealed) showModel(q);
+        else checkBtn = button("Show model answer", "btn", function () {
+          var text = $("#open").value.trim();
+          state.answers[q.id] = { response: text, revealed: true }; save(); renderQuestion(); typeset();
+        });
+      } else {
+        checkBtn = button("Check answer", "btn", function () {
+          var response = q.type === "fill" ? $("#fill").value.trim() : selected;
+          if (response === undefined || response === "") return;
+          record(q, response, grade(q, response)); renderQuestion(); typeset(); setProgress();
+        }, q.type !== "fill" && selected === undefined);
+        if (q.type === "fill") {
+          $("#fill").addEventListener("keydown", function (e) { if (e.key === "Enter") checkBtn.click(); });
+          $("#fill").focus();
+        }
+      }
+      if (q.hint && !(a && a.revealed)) {
+        button("Hint", "btn secondary", function (e) {
+          $("#hint-box").innerHTML = '<div class="hint">💡 ' + md(q.hint) + "</div>"; e.target.remove(); typeset();
+        });
+      }
+    } else {
+      showFeedback(q, a);
+    }
+
+    if (state.pos > 0) button("Back", "btn secondary", function () { state.pos--; save(); render(); });
+    if (checked) {
+      var last = state.pos === state.order.length - 1;
+      var next = button(last ? "See results" : "Next question", "btn", function () {
+        if (last) { state.finished = true; state.finishedAt = localIso(); } else state.pos++;
+        save(); render(); app.focus();
+      });
+      next.focus();
+    }
+
+    function showModel(q) {
+      var box = document.createElement("div"); box.className = "model";
+      box.innerHTML = "<strong>Model answer</strong>" + md(q.modelAnswer || "") +
+        (q.keyPoints && q.keyPoints.length ? '<strong>A full answer includes:</strong><ul>' + q.keyPoints.map(function (k) { return "<li>" + mdInline(k) + "</li>"; }).join("") + "</ul>" : "") +
+        '<p class="small" style="margin-top:10px">Compare honestly with what you wrote, then mark yourself.</p>';
+      $("#feedback").appendChild(box);
+      [["Got it", true], ["Partly", "partial"], ["Missed it", false]].forEach(function (pair) {
+        button(pair[0], pair[1] === true ? "btn" : "btn secondary", function () {
+          record(q, state.answers[q.id].response, pair[1]); state.answers[q.id].revealed = true; save(); renderQuestion(); typeset(); setProgress();
+        });
+      });
+    }
+  }
+
+  function showFeedback(q, a) {
+    var cls = a.correct === true ? "good" : a.correct === "partial" ? "partial" : "bad";
+    var verdict = a.correct === true ? "✓ Correct" : a.correct === "partial" ? "◐ Partly right" : "✗ Not quite";
+    var html = '<div class="feedback ' + cls + '"><strong class="verdict">' + verdict + "</strong>";
+    if (a.correct !== true && !isOpen(q)) html += "<p>Answer: <strong>" + esc(answerText(q)) + "</strong></p>";
+    if (isOpen(q)) {
+      html += "<p><strong>Model answer:</strong></p>" + md(q.modelAnswer || "");
+      if (q.keyPoints && q.keyPoints.length) html += '<ul>' + q.keyPoints.map(function (k) { return "<li>" + mdInline(k) + "</li>"; }).join("") + "</ul>";
+    }
+    if (q.explanation) html += md(q.explanation);
+    if (q.source) html += '<span class="source">Source: ' + esc(q.source) + "</span>";
+    $("#feedback").innerHTML = html + "</div>";
+  }
+
+  function scoreOf(ids, from) {
+    var c = 0, p = 0;
+    ids.forEach(function (id) { var r = from[id]; if (r === true) c++; else if (r === "partial") p++; });
+    return { correct: c, partial: p, total: ids.length, points: c + p / 2, percent: ids.length ? Math.round(100 * (c + p / 2) / ids.length) : 0 };
+  }
+
+  function renderResults() {
+    var ids = questions.map(function (q) { return q.id; });
+    var first = scoreOf(ids, state.first);
+    var latest = {}; ids.forEach(function (id) { latest[id] = state.answers[id] ? state.answers[id].correct : undefined; });
+    var topics = {};
+    questions.forEach(function (q) {
+      var t = topicName(q.topic); topics[t] = topics[t] || { ids: [] }; topics[t].ids.push(q.id);
+    });
+    var missed = questions.filter(function (q) { return latest[q.id] !== true; });
+
+    var html = '<div class="card"><h2>Results</h2><div class="score">' + first.percent + '%</div><p class="small">' +
+      first.correct + " correct" + (first.partial ? ", " + first.partial + " partly right" : "") + " out of " + first.total + " on the first try" +
+      (state.pass > 1 ? " · after retries: " + scoreOf(ids, latest).percent + "%" : "") + "</p>" +
+      '<table><thead><tr><th>Topic</th><th>Score</th><th style="width:40%">First try</th></tr></thead><tbody>';
+    Object.keys(topics).forEach(function (t) {
+      var s = scoreOf(topics[t].ids, state.first);
+      html += "<tr><td>" + esc(t) + "</td><td>" + s.points + "/" + s.total + '</td><td><div class="meter" role="img" aria-label="' + s.percent + ' percent"><span style="width:' + s.percent + '%"></span></div></td></tr>';
+    });
+    html += "</tbody></table>" +
+      '<div class="actions">' +
+      (missed.length ? '<button class="btn" id="retry" type="button">Retry ' + missed.length + " missed</button>" : "") +
+      '<button class="btn secondary" id="copy" type="button">Copy results for Claude</button>' +
+      '<button class="btn secondary" id="download" type="button">Download results</button>' +
+      '<button class="btn secondary" id="again" type="button">Start over</button></div>' +
+      '<p class="small" style="margin-top:12px">Paste your results back to Claude so it can log them, update your error log and build the next round on what you missed.</p></div>';
+
+    if (missed.length) {
+      html += '<div class="card"><h2>Review what you missed</h2>';
+      missed.forEach(function (q) {
+        var a = state.answers[q.id] || {};
+        var yours = a.response === undefined || a.response === null || a.response === "" ? "(no answer)" :
+          q.type === "mcq" ? plain(q.options[a.response]) : q.type === "tf" ? (a.response ? "True" : "False") : String(a.response);
+        html += '<div class="missed"><div class="meta"><span class="chip">' + esc(topicName(q.topic)) + "</span></div>" + md(q.prompt) +
+          '<p class="small">Your answer: ' + esc(yours) + "</p><p><strong>" + (isOpen(q) ? "Model answer" : "Answer") + ":</strong> " + esc(answerText(q)) + "</p>" +
+          (q.explanation ? md(q.explanation) : "") + (q.source ? '<span class="source">Source: ' + esc(q.source) + "</span>" : "") + "</div>";
+      });
+      html += "</div>";
+    }
+    app.innerHTML = html;
+
+    if (missed.length) $("#retry").addEventListener("click", function () {
+      state.order = missed.map(function (q) { return q.id; });
+      state.order.forEach(function (id) { delete state.answers[id]; });
+      state.pos = 0; state.pass++; state.finished = false; save(); render();
+    });
+    $("#copy").addEventListener("click", function () {
+      var text = "Here are my quiz results. Please log them and build the next round on what I missed.\n\n```json\n" + JSON.stringify(payload(), null, 2) + "\n```";
+      copy(text);
+    });
+    $("#download").addEventListener("click", function () {
+      var blob = new Blob([JSON.stringify(payload(), null, 2)], { type: "application/json" });
+      var link = document.createElement("a"); link.href = URL.createObjectURL(blob);
+      link.download = (data.id || "quiz") + "-results.json"; document.body.appendChild(link); link.click();
+      setTimeout(function () { URL.revokeObjectURL(link.href); link.remove(); }, 500);
+    });
+    $("#again").addEventListener("click", function () { store.remove(KEY); state = freshState(); render(); });
+  }
+
+  function payload() {
+    var ids = questions.map(function (q) { return q.id; });
+    return {
+      quiz: data.id || null, title: data.title || null, course: data.course || null,
+      started: state.startedAt, finished: state.finishedAt || localIso(),
+      score: scoreOf(ids, state.first),
+      answers: questions.map(function (q) {
+        var a = state.answers[q.id] || {};
+        var response = a.response;
+        if (q.type === "mcq" && typeof response === "number") response = plain(q.options[response]);
+        return { id: q.id, topic: q.topic || null, type: q.type, difficulty: q.difficulty || null, prompt: plain(q.prompt),
+                 response: response === undefined ? null : response, correct: q.id in state.first ? state.first[q.id] : null,
+                 afterRetry: a.correct === undefined ? null : a.correct, answer: answerText(q), source: q.source || null };
+      })
+    };
+  }
+
+  function toast(msg) { var t = $("#toast"); t.textContent = msg; t.classList.add("show"); setTimeout(function () { t.classList.remove("show"); }, 2200); }
+  function copy(text) {
+    function fallback() {
+      var area = document.createElement("textarea"); area.value = text; area.style.position = "fixed"; area.style.opacity = "0";
+      document.body.appendChild(area); area.select();
+      var ok = false; try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      area.remove(); toast(ok ? "Copied. Paste it into your chat with Claude." : "Couldn't copy. Use Download results instead.");
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(function () { toast("Copied. Paste it into your chat with Claude."); }, fallback);
+    else fallback();
+  }
+
+  // Keyboard: 1-4 or A-D pick an option, T/F for true-false, Enter checks or moves on.
+  document.addEventListener("keydown", function (e) {
+    if (!state.started || state.finished || e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT" || e.metaKey || e.ctrlKey || e.altKey) return;
+    var opts = app.querySelectorAll(".opt:not([disabled])");
+    var key = e.key.toLowerCase(), index = -1;
+    if (/^[1-9]$/.test(key)) index = +key - 1;
+    else if (/^[a-i]$/.test(key) && opts.length > 2) index = key.charCodeAt(0) - 97;
+    else if (opts.length === 2 && (key === "t" || key === "f")) index = key === "t" ? 0 : 1;
+    if (index >= 0 && opts[index]) { opts[index].click(); opts[index].focus(); e.preventDefault(); }
+    else if (key === "enter") {
+      // Enter on a chosen option checks the answer instead of re-selecting it.
+      var primary = app.querySelector("#actions .btn:not(.secondary):not([disabled])"), active = document.activeElement;
+      if (primary && (!active || active.tagName !== "BUTTON" || active.classList.contains("opt"))) { primary.click(); e.preventDefault(); }
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

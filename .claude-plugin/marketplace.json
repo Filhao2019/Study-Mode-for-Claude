@@ -1,16 +1,28 @@
 {
-  "name": "study-mode-for-claude",
+  "name": "studying-with-claude",
+  "description": "Studying with Claude: an open-source study toolkit for students preparing for exams.",
   "owner": {
     "name": "Filhao2019",
     "url": "https://github.com/Filhao2019"
   },
+  "renames": {
+    "study-mode": "study"
+  },
   "plugins": [
     {
-      "name": "study-mode",
+      "name": "study",
+      "displayName": "Studying with Claude",
       "source": "./",
-      "description": "Studying with Claude: Socratic, step-by-step tutoring with scaffolded lessons, knowledge checks, quizzes, flashcards and study plans.",
-      "version": "1.0.0",
-      "license": "MIT"
+      "description": "Cited notes, adaptive quizzes, FSRS flashcards, exam plans, mock exams, podcast scripts and a Socratic Study Mode, all built from your own course materials.",
+      "category": "education",
+      "tags": [
+        "study",
+        "education",
+        "exam-prep",
+        "flashcards",
+        "quiz",
+        "students"
+      ]
     }
   ]
 }
