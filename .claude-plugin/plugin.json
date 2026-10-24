@@ -1,0 +1,13 @@
+{
+  "name": "study-mode",
+  "version": "1.0.0",
+  "description": "Studying with Claude: Socratic, step-by-step tutoring with scaffolded lessons, knowledge checks, quizzes, flashcards and study plans instead of handing over answers.",
+  "author": {
+    "name": "Filhao2019",
+    "url": "https://github.com/Filhao2019"
+  },
+  "homepage": "https://github.com/Filhao2019/Study-Mode-for-Claude",
+  "repository": "https://github.com/Filhao2019/Study-Mode-for-Claude",
+  "license": "MIT",
+  "keywords": ["study", "tutor", "education", "socratic", "learning", "quiz", "flashcards"]
+}

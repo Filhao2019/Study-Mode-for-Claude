@@ -1,0 +1,16 @@
+{
+  "name": "study-mode-for-claude",
+  "owner": {
+    "name": "Filhao2019",
+    "url": "https://github.com/Filhao2019"
+  },
+  "plugins": [
+    {
+      "name": "study-mode",
+      "source": "./",
+      "description": "Studying with Claude: Socratic, step-by-step tutoring with scaffolded lessons, knowledge checks, quizzes, flashcards and study plans.",
+      "version": "1.0.0",
+      "license": "MIT"
+    }
+  ]
+}
